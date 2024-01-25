@@ -1,18 +1,17 @@
 package TinyCore.Utils
 
-/**
+/* =======================================================
  * Author : xie-1399
  * language: SpinalHDL v1.9.4
  * date 2024.1.24
  * delay the input with config cycles out
+ * =======================================================
  */
 
-import TinyCore.Utils.SpinalTools.PrefixComponent
+import Common.SpinalTools.PrefixComponent
 import spinal.core._
 import spinal.lib._
 
-
-//Todo test it
 
 class Delay_Hand(cycles:Int = 2,width:Int = 32) extends PrefixComponent{
   val io = new Bundle {
@@ -59,4 +58,9 @@ object DelayIt{
     SpinalVerilog(new Delay_Lib(4))
     SpinalVerilog(new Delay_Hand(4))
   }
+}
+
+
+object Delay_testIt extends App{
+
 }

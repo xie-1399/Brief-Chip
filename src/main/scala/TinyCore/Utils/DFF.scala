@@ -1,14 +1,15 @@
 package TinyCore.Utils
 
-/**
+/*=======================================================
  * Author : xie-1399
  * language: SpinalHDL v1.9.4
  * date 2024.1.24
  * using to build some DFF until Regs for the Pipeline(all latency 1)
+ * =======================================================
  */
 
 import spinal.core._
-import SpinalTools.PrefixComponent
+import Common.SpinalTools.PrefixComponent
 
 class Pipe_DFF(width:Int = 32) extends PrefixComponent {
   /* with the default value and hold signal */
