@@ -13,7 +13,7 @@ import Common.SpinalTools.PrefixComponent
 import spinal.core._
 import spinal.lib._
 
-/* maybe trans it works better */
+/* maybe trans it works better (all out ports should be reg ) */
 
 case class rib(addrWidth:Int = 32,dataWidth:Int = 32) extends Bundle with IMasterSlave {
   val addr = UInt(addrWidth bits)
@@ -27,7 +27,7 @@ case class rib(addrWidth:Int = 32,dataWidth:Int = 32) extends Bundle with IMaste
   }
 }
 
-/* pipe with the cycles going */
+/* all the combine logic (seems not good ) */
 
 class RIB() extends PrefixComponent{
   /* 4 masters send to the 5 slaves works*/
@@ -45,58 +45,75 @@ class RIB() extends PrefixComponent{
   val sels = io.sels.asBits
   val grant = Reg(Bits(2 bits)).init(0)
   val hold = RegInit(False)
-
-  /* fixed priority 0 > 1 > 2 > 3 */
-  when(sels.asUInt > 0){
-    hold := True
-  }
-
-  /* fix the mux bugs */
-
-  def getSlave(addr:UInt) = {
-    val slave_sel = addr.mux(
-      slave_0 -> io.slaves(0),
-      slave_1 -> io.slaves(1),
-      slave_2 -> io.slaves(2),
-      slave_3 -> io.slaves(3),
-      slave_4 -> io.slaves(4)
-    )
-    slave_sel
-  }
-
   val HighSel = MemAddrBus - 1 downto MemAddrBus - 4  /* the high 4 bits used to choose which slave */
+  /* fixed priority 0 > 1 > 2 > 3 */
+  when(sels.asUInt > 0){hold := True}
 
-  for(idx <- 0 until MasterNum){
-    io.masters(idx).rdata := B(0,MemBus bits)
+  /* the grant logic */
+  when(io.sels(0)){
+    grant := B"00"
+  }.elsewhen(io.sels(1)){
+    grant := B"01"
+  }.elsewhen(io.sels(2)){
+    grant := B"10"
+  }.elsewhen(io.sels(3)){
+    grant := B"11"
+  }.otherwise{
+    grant := B"11"
   }
+
+  /* init the out */
   for(idx <- 0 until SlaveNum){
-    io.slaves(idx).addr := 0
     io.slaves(idx).wdata := 0
     io.slaves(idx).wr := False
+    io.slaves(idx).addr := 0
+  }
+  for(idx <- 0 until MasterNum){
+    io.masters(idx).rdata := 0
   }
 
   /* combine logic */
   switch(grant){
     is(B"00"){
-      io.masters(0) <> getSlave(io.masters(0).addr(HighSel))
+      switch(io.masters(0).addr(HighSel)){
+        is(slave_0){io.masters(0) <> io.slaves(0)}
+        is(slave_1){io.masters(0) <> io.slaves(1)}
+        is(slave_2){io.masters(0) <> io.slaves(2)}
+        is(slave_3){io.masters(0) <> io.slaves(3)}
+        is(slave_4){io.masters(0) <> io.slaves(4)}
+      }
     }
 
     is(B"01"){
-      io.masters(1) <> getSlave(io.masters(1).addr(HighSel))
+      switch(io.masters(1).addr(HighSel)) {
+        is(slave_0) {io.masters(1) <> io.slaves(0)}
+        is(slave_1) {io.masters(1) <> io.slaves(1)}
+        is(slave_2) {io.masters(1) <> io.slaves(2)}
+        is(slave_3) {io.masters(1) <> io.slaves(3)}
+        is(slave_4) {io.masters(1) <> io.slaves(4)}
+      }
     }
 
     is(B"10"){
-      io.masters(2) <> getSlave(io.masters(2).addr(HighSel))
+      switch(io.masters(2).addr(HighSel)) {
+        is(slave_0) {io.masters(2) <> io.slaves(0)}
+        is(slave_1) {io.masters(2) <> io.slaves(1)}
+        is(slave_2) {io.masters(2) <> io.slaves(2)}
+        is(slave_3) {io.masters(2) <> io.slaves(3)}
+        is(slave_4) {io.masters(2) <> io.slaves(4)}
+      }
     }
 
     is(B"11"){
-      io.masters(3) <> getSlave(io.masters(3).addr(HighSel))
+      switch(io.masters(3).addr(HighSel)) {
+        is(slave_0) {io.masters(3) <> io.slaves(0)}
+        is(slave_1) {io.masters(3) <> io.slaves(1)}
+        is(slave_2) {io.masters(3) <> io.slaves(2)}
+        is(slave_3) {io.masters(3) <> io.slaves(3)}
+        is(slave_4) {io.masters(3) <> io.slaves(4)}
+      }
     }
   }
   /* connect the io */
   io.hold := hold
-}
-
-object RIB extends App{
-  SpinalVerilog(new RIB())
 }
