@@ -44,6 +44,7 @@ object VCS{
   val simCfg = SimConfig
     .withVCS(flags)
     .withFSDBWave
+    .allOptimisation
     .workspacePath("simulation")
 }
 

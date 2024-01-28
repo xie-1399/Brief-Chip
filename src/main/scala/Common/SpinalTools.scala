@@ -15,7 +15,5 @@ object SpinalTools{
   class PrefixComponent() extends Component{
     noIoPrefix()
   }
-
   
-
 }
