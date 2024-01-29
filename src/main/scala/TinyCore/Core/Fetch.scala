@@ -29,6 +29,7 @@ class Fetch extends PrefixComponent{
   /* hold the fetch stage or not */
   val hold_en = (io.hold >= Hold_Fetch)
 
+  /* pass the pc and inst with the pipe going */
   val dff_inst = new Pipe_DFF(InstBusDataWidth)
   dff_inst.io.din := io.inst_i
   dff_inst.io.hold := hold_en
