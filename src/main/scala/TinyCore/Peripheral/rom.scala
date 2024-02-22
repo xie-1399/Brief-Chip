@@ -17,7 +17,6 @@ class rom(addrWidth:Int = 10,dataWidth:Int = 32) extends PrefixComponent{
     val addr = slave Flow(UInt (addrWidth bits))
     val dataOut = out Bits (dataWidth bits)
   }
-
   def depth = pow(2, addrWidth).toInt
   val rom = Mem(Bits(dataWidth bits), depth)
   io.dataOut := rom.readSync(io.addr.payload,enable = io.addr.valid)

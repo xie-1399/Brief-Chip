@@ -46,6 +46,7 @@ object VCS{
     .withFSDBWave
     .allOptimisation
     .workspacePath("simulation")
+    .cachePath("cache")
 }
 
 object SIMCFG{

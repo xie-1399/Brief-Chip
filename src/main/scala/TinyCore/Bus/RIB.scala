@@ -126,7 +126,7 @@ object RIB extends App{
   SIMCFG().compile{
     val dut = new RIB()
     dut
-  }.doSimUntilVoid{
+  }.doSimUntilVoid(seed = 42){
     dut =>
       dut.clockDomain.forkStimulus(10)
 
