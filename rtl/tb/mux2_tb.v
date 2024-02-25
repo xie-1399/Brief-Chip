@@ -22,7 +22,7 @@ module mux2_tb;
 
     end
 
-    mux2 dut(
+    muxtwo dut(
         .a(a_in),
         .b(b_in),
         .sel(sel),

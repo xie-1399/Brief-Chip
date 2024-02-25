@@ -2,6 +2,7 @@
 mux2:
 	vcs -full64 -cpp g++-4.8 -cc gcc-4.8 -LDFLAGS -Wl,--no-as-needed \
 	-fsdb mux2_tb.v -sverilog ../hw/*.v -debug_all
+	./simv
 
 sim_vcs:
 	./simv

@@ -15,7 +15,6 @@ import spinal.lib._
 
 
 /* here is the spi master module */
-
 class spi(addrWidth:Int = 32,dataWidth:Int = 32) extends PrefixComponent {
 
   val io = new Bundle{
@@ -52,7 +51,17 @@ class spi(addrWidth:Int = 32,dataWidth:Int = 32) extends PrefixComponent {
   }
   io.spi_ss := !spi_ctrl(3)
   val div_cnt = spi_ctrl(15 downto 8)
-  // val clk_cnt = Counter()
+  val clk_cnt = Reg(UInt(9 bits)).init(0)
+
+  when(enable){
+    when(clk_cnt === div_cnt.asUInt){
+      clk_cnt := 0
+    }.otherwise{
+      clk_cnt := clk_cnt + 1 // the internal clock count
+    }
+  }.otherwise{
+    clk_cnt := 0
+  }
 
 
 
