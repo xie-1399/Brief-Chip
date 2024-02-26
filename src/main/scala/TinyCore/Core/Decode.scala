@@ -76,9 +76,9 @@ class Decode() extends PrefixComponent{
         }
       }
     }
-    is()
-    is()
-    is()
+    //is()
+    //is()
+    //is()
 
 
   }
