@@ -14,16 +14,18 @@ import Common.SIMCFG
 import scala.util.Random
 
 class PE(size:Int = 4,DataWidth:Int = 25) extends Component {
+  import Constant._
+
   require(size % 2 == 0)
 
   val io = new Bundle{
-    val ifm = in(Vec(SInt(8 bits), size))
-    val wgt = in(Vec(SInt(8 bits), size))
+    val ifm = in(Vec(SInt(Ifm_DataWidth bits), size))
+    val wgt = in(Vec(SInt(Wgt_DataWidth bits), size))
     val p_sum = out(SInt(DataWidth bits))
   }
   noIoPrefix()
 
-  val product = Vec(Reg(SInt(16 bits)).init(0),size)
+  val product = Vec(Reg(SInt(Ifm_DataWidth + Wgt_DataWidth bits)).init(0),size)
   val p_sum = Reg(SInt(DataWidth bits)).init(0)
 
   for(idx <- 0 until size){
