@@ -32,8 +32,3 @@ class PsumAdd(dataWidth:Int = 25) extends Component {
 
   io.pe_psum := TotalPsum
 }
-
-
-object PsumAdd extends App{
-  SpinalSystemVerilog(new PsumAdd(25))
-}

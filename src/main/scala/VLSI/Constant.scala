@@ -15,4 +15,9 @@ object Constant {
 
   def BufSize = 4
 
+  def PECol = 5
+  def PERow = 4
+  def Out_DataWidth = 25
+  def FIFODepth = 64
+
 }

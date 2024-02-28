@@ -33,23 +33,3 @@ class IfmBuf extends Component {
 
   io.ifm_bufout := ifm_buf
 }
-
-/* seems ready about it */
-object IfmBuf extends App{
-  import spinal.core.sim._
-  SIMCFG().compile{
-   val dut = new IfmBuf()
-   dut
-  }.doSimUntilVoid{
-    dut =>
-      dut.clockDomain.forkStimulus(10)
-      var idx = 0
-      dut.clockDomain.waitSamplingWhere{
-        idx += 1
-        dut.io.ifm_read #= true
-        dut.io.ifm_input.randomize()
-        idx == 20
-      }
-      simSuccess()
-  }
-}

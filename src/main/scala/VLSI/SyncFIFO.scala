@@ -11,10 +11,10 @@ package VLSI
 import spinal.core._
 import spinal.lib._
 import Common.SIMCFG
+
 import collection.mutable
 
-
-class SynchFIFO(dataWidth:Int = 25,depth:Int = 64) extends Component {
+class SyncFIFO(dataWidth:Int = 25,depth:Int = 64) extends Component {
   def addrWidth = log2Up(depth)
 
   val io = new Bundle{
@@ -63,13 +63,41 @@ class SynchFIFO(dataWidth:Int = 25,depth:Int = 64) extends Component {
 
 }
 
+/* the V2 seems checks ready for latency is 2 */
 
-/* **** Todo with more tests **** */
+class SyncFIFOV2 extends Component{
+  import Constant._
+  val io = new Bundle{
+    val dataIn = in Bits(Out_DataWidth bits)
+    val dataOut = out Bits(Out_DataWidth bits)
+    val wr_en = in Bool() /* write enable*/
+    val rd_en = in Bool() /* read enable */
+    val empty = out Bool()
+    val full = out Bool()
+  }
 
-object SynchFIFO extends App{
+  val fifo = StreamFifo(Bits(Out_DataWidth bits),FIFODepth)
+
+  val read = Stream(cloneOf(io.dataOut))
+  val write = Stream(cloneOf(io.dataOut))
+  read.ready := io.rd_en
+  write.valid := io.wr_en
+
+  write.payload := io.dataIn
+  fifo.io.push.connectFrom(write)
+  read.connectFrom(fifo.io.pop)
+
+  /* using the Stream Fifo */
+  io.dataOut := read.payload
+  io.empty := fifo.io.occupancy === 0
+  io.full := fifo.io.availability === 0
+}
+
+object SynchFIFOV2 extends App{
   import spinal.core.sim._
-  SIMCFG(gtkFirst = true).compile {
-    val dut = new SynchFIFO(25,64)
+  SIMCFG().compile {
+    val dut = new SyncFIFOV2()
+    dut.fifo.io.simPublic()
     dut
   }.doSimUntilVoid {
     dut =>
@@ -80,28 +108,30 @@ object SynchFIFO extends App{
       dut.io.rd_en #= false
       dut.clockDomain.waitSampling()
 
-      /* monitor about the fifo */
-
-      def monitor() = {
-        for(idx <- 0 until 1000){
-          var res = 0l
+      // Push data randomly, and fill the queueModel with pushed transactions.
+      val pushThread = fork {
+        dut.io.wr_en #= false
+        while (true) {
           dut.io.wr_en.randomize()
           dut.io.dataIn.randomize()
+          dut.clockDomain.waitSampling()
+          if (dut.fifo.io.push.valid.toBoolean && dut.fifo.io.push.ready.toBoolean) {
+            queueModel.enqueue(dut.fifo.io.push.payload.toLong)
+          }
+        }
+      }
+
+      // Pop data randomly, and check that it match with the queueModel.
+      val popThread = fork {
+        dut.io.rd_en #= true
+        for (i <- 0 until 100000) {
           dut.io.rd_en.randomize()
           dut.clockDomain.waitSampling()
-          if (dut.io.wr_en.toBoolean && !dut.io.full.toBoolean) {
-            queueModel.enqueue(dut.io.dataIn.toLong)
-          }
-          if (dut.io.rd_en.toBoolean && !dut.io.empty.toBoolean) {
-            dut.io.wr_en #= false
-            dut.io.rd_en #= false
-            dut.clockDomain.waitSampling()
-            res = queueModel.dequeue()
-            assert(dut.io.dataOut.toLong == queueModel.dequeue())
+          if (dut.fifo.io.pop.valid.toBoolean && dut.fifo.io.pop.ready.toBoolean) {
+            assert(dut.fifo.io.pop.payload.toLong == queueModel.dequeue())
           }
         }
         simSuccess()
       }
-      monitor()
   }
 }
