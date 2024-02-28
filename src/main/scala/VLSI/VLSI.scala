@@ -15,7 +15,7 @@ import spinal.lib.bus.amba3.apb._
 /* using the apb bus to driver some regs internal
 * 0x0 -> start conv   0x4 -> conv end */
 
-class Top extends Component {
+class VLSI extends Component {
   val io = new Bundle{
     val clk = in Bool()
     val reset = in Bool()
@@ -46,9 +46,4 @@ class Top extends Component {
 
 
 
-}
-
-
-object Top extends App{
-  SpinalSystemVerilog(new Top)
 }

@@ -10,25 +10,23 @@ package VLSI
 import spinal.core._
 import spinal.lib._
 import Common.SIMCFG
-
+import Constant._
 import scala.util.Random
 
-class PE(size:Int = 4,DataWidth:Int = 25) extends Component {
+class PE extends Component {
   import Constant._
 
-  require(size % 2 == 0)
-
   val io = new Bundle{
-    val ifm = in(Vec(SInt(Ifm_DataWidth bits), size))
-    val wgt = in(Vec(SInt(Wgt_DataWidth bits), size))
-    val p_sum = out(SInt(DataWidth bits))
+    val ifm = in(Vec(SInt(Ifm_DataWidth bits), BufSize))
+    val wgt = in(Vec(SInt(Wgt_DataWidth bits), BufSize))
+    val p_sum = out(SInt(PE_DataWidth bits))
   }
   noIoPrefix()
 
-  val product = Vec(Reg(SInt(Ifm_DataWidth + Wgt_DataWidth bits)).init(0),size)
-  val p_sum = Reg(SInt(DataWidth bits)).init(0)
+  val product = Vec(Reg(SInt(Ifm_DataWidth + Wgt_DataWidth bits)).init(0),BufSize)
+  val p_sum = Reg(SInt(PE_DataWidth bits)).init(0)
 
-  for(idx <- 0 until size){
+  for(idx <- 0 until BufSize){
     product(idx) := io.ifm(idx) * io.wgt(idx)
   }
   p_sum := product.reduceBalancedTree(_ +^ _).resized
@@ -38,7 +36,7 @@ class PE(size:Int = 4,DataWidth:Int = 25) extends Component {
 object PE extends App{
   import spinal.core.sim._
   SIMCFG(gtkFirst = true).compile{
-   val dut = new PE(4)
+   val dut = new PE
    dut
   }.doSimUntilVoid{
     dut =>

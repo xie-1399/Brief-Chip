@@ -68,15 +68,15 @@ class SyncFIFO(dataWidth:Int = 25,depth:Int = 64) extends Component {
 class SyncFIFOV2 extends Component{
   import Constant._
   val io = new Bundle{
-    val dataIn = in Bits(Out_DataWidth bits)
-    val dataOut = out Bits(Out_DataWidth bits)
+    val dataIn = in Bits(PE_DataWidth bits)
+    val dataOut = out Bits(PE_DataWidth bits)
     val wr_en = in Bool() /* write enable*/
     val rd_en = in Bool() /* read enable */
     val empty = out Bool()
     val full = out Bool()
   }
 
-  val fifo = StreamFifo(Bits(Out_DataWidth bits),FIFODepth)
+  val fifo = StreamFifo(Bits(PE_DataWidth bits),FIFODepth)
 
   val read = Stream(cloneOf(io.dataOut))
   val write = Stream(cloneOf(io.dataOut))
@@ -93,7 +93,7 @@ class SyncFIFOV2 extends Component{
   io.full := fifo.io.availability === 0
 }
 
-object SynchFIFOV2 extends App{
+object SyncFIFOV2 extends App{
   import spinal.core.sim._
   SIMCFG().compile {
     val dut = new SyncFIFOV2()
