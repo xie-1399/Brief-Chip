@@ -11,36 +11,34 @@ package VLSI
 import spinal.core._
 import spinal.lib._
 import Constant._
-
-
-/* Todo know more about it and test it */
+import Common.SIMCFG
 
 class PEArray extends Component {
 
   val io = new Bundle{
-    val ifm = in Bits(64 bits)
-    val weight = in Bits(32 bits)
+    val ifm = in Bits(Ifm_DataWidth * IfmRows bits)
+    val weight = in Bits(Wgt_DataWidth * WgtNums bits)
 
     val ifm_read = in Bool()
     val wgt_read = in Bool()
   }
 
-  val rows = Vec(Reg(SInt(Ifm_DataWidth bits)).init(0),8)
-  rows := io.ifm.asSInt.subdivideIn(8 slices)
+  val rows = Vec(Reg(SInt(Ifm_DataWidth bits)).init(0),IfmRows)
+  rows := io.ifm.asSInt.subdivideIn(IfmRows slices)
 
-  val wgts = Vec(Reg(SInt(Wgt_DataWidth bits)).init(0),4)
-  wgts := io.weight.asSInt.subdivideIn(4 slices)
+  val wgts = Vec(Reg(SInt(Wgt_DataWidth bits)).init(0),WgtNums)
+  wgts := io.weight.asSInt.subdivideIn(WgtNums slices)
 
-  val PEs = Array.fill(4){   /* 4 * 5*/
-    Array.fill(5){new PE}}
-  val PEWire = Array.fill(4) {
-    Array.fill(5) {SInt(PE_DataWidth bits)}}
+  val PEs = Array.fill(PERow){   /* 4 * 5*/
+    Array.fill(PECol){new PE}}
+  val PEWire = Array.fill(PERow) {
+    Array.fill(PECol) {SInt(PE_DataWidth bits)}}
 
-  val ifmBufs = Array.fill(8){new IfmBuf}
-  val ifmBufWire = Array.fill(8){Vec(SInt(Ifm_DataWidth bits),BufSize)}
+  val ifmBufs = Array.fill(IfmRows){new IfmBuf}
+  val ifmBufWire = Array.fill(IfmRows){Vec(SInt(Ifm_DataWidth bits),BufSize)}
 
-  val wgtBufs = Array.fill(4){new WgtBuf}
-  val wgtBufWire = Array.fill(4){Vec(SInt(Wgt_DataWidth bits),BufSize)}
+  val wgtBufs = Array.fill(WgtNums){new WgtBuf}
+  val wgtBufWire = Array.fill(WgtNums){Vec(SInt(Wgt_DataWidth bits),BufSize)}
 
   /* the weight and feature map buf connected */
   ifmBufs.zipWithIndex.foreach{
@@ -72,5 +70,15 @@ class PEArray extends Component {
 
 
 object PEArray extends App{
-  SpinalSystemVerilog(new PEArray)
+  import spinal.core.sim._
+  /* test the PE Array */
+  SIMCFG().compile{
+    val dut = new PEArray
+    dut
+  }.doSimUntilVoid{
+    dut =>
+      dut.clockDomain.forkStimulus(10)
+      simSuccess()
+  }
+
 }

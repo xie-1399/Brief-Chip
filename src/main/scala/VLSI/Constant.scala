@@ -20,4 +20,7 @@ object Constant {
   def PE_DataWidth = 25
   def FIFODepth = 64
 
+  def IfmRows = 8
+  def WgtNums = 4
+
 }
