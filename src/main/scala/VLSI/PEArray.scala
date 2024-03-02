@@ -66,6 +66,10 @@ class PEArray extends Component {
           PEWire(p._2)(e._2) := e._1.io.p_sum
       }
   }
+
+  /* the PSum Buffer */
+
+
 }
 
 
@@ -78,6 +82,9 @@ object PEArray extends App{
   }.doSimUntilVoid{
     dut =>
       dut.clockDomain.forkStimulus(10)
+
+
+
       simSuccess()
   }
 
