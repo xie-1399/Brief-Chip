@@ -24,6 +24,7 @@ object FST{
   val simCfg = SimConfig
     .withFstWave
     .withVerilator
+    .allOptimisation
     .workspacePath("simulation")
 }
 

@@ -18,6 +18,10 @@ class PEArray extends Component {
   val io = new Bundle{
     val ifm = in Bits(Ifm_DataWidth * IfmRows bits)
     val weight = in Bits(Wgt_DataWidth * WgtNums bits)
+    val odd_cnt = in Bool()
+    val p_init = in Bool()
+    val p_write_zero = in Bool()
+    val p_valid_data = in Bool() /* show the input is valid or not */
 
     val ifm_read = in Bool()
     val wgt_read = in Bool()
@@ -40,6 +44,9 @@ class PEArray extends Component {
   val wgtBufs = Array.fill(WgtNums){new WgtBuf}
   val wgtBufWire = Array.fill(WgtNums){Vec(SInt(Wgt_DataWidth bits),BufSize)}
 
+  val psumBufs = Array.fill(PsumNums){new PsumBuf}
+  val fifo_outWire = Array.fill(PsumNums){Flow(SInt(PE_DataWidth bits))}
+
   /* the weight and feature map buf connected */
   ifmBufs.zipWithIndex.foreach{
     f =>
@@ -55,6 +62,20 @@ class PEArray extends Component {
       wgtBufWire(w._2) := w._1.io.wgt_bufout
   }
 
+  /* the PSum Buffer */
+  psumBufs.zipWithIndex.foreach{
+    p =>
+      p._1.io.p_init := io.p_init
+      p._1.io.p_write_zero := io.p_write_zero
+      p._1.io.p_valid_data := io.p_valid_data
+      p._1.io.pe_data(0) := PEWire(0)(p._2)
+      p._1.io.pe_data(1) := PEWire(1)(p._2)
+      p._1.io.pe_data(2) := PEWire(2)(p._2)
+      p._1.io.pe_data(3) := PEWire(3)(p._2)
+      p._1.io.odd_cnt := io.odd_cnt
+
+      fifo_outWire(p._2) := p._1.io.fifo_out
+  }
 
   /* PE connected */
   PEs.zipWithIndex.foreach{
@@ -66,10 +87,6 @@ class PEArray extends Component {
           PEWire(p._2)(e._2) := e._1.io.p_sum
       }
   }
-
-  /* the PSum Buffer */
-
-
 }
 
 
@@ -82,9 +99,6 @@ object PEArray extends App{
   }.doSimUntilVoid{
     dut =>
       dut.clockDomain.forkStimulus(10)
-
-
-
       simSuccess()
   }
 

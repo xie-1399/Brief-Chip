@@ -8,19 +8,22 @@ package VLSI
  * =======================================================
  */
 
+import Common.SIMCFG
 import spinal.core._
 import spinal.lib._
-
 import Constant._
 
+import scala.util.Random
+
 /* seems the psum is like cal -> then to fifo */
+/* maybe more likely draw the pic */
 
 class PsumBuf extends Component {
 
   val io = new Bundle{
     val pe_data = in Vec(SInt(PE_DataWidth bits),4)
     val p_write_zero = in Bool()
-    val p_valid_data = in Bool()
+    val p_valid_data = in Bool() /* show the input is valid or not */
     val p_init = in Bool()
     val odd_cnt = in Bool()
 
@@ -48,8 +51,7 @@ class PsumBuf extends Component {
 
   val p_valid = Reg(Bits(3 bits)).init(0) /* whether the input is valid */
   p_valid := p_valid(1 downto 0) ## io.p_valid_data
-  val p_write_zero_reg = Reg(Bool()).init(False) // Whether the current write zero is valid data
-  p_write_zero_reg := io.p_write_zero
+  val p_write_zero_reg = RegNext(io.p_write_zero).init(False) // Whether the current write zero is valid data
   val write_zero = p_write_zero_reg || io.p_write_zero
 
   /* four stages pipeline as shifter */
@@ -146,9 +148,49 @@ class PsumBuf extends Component {
   /* io connect */
   io.fifo_out.valid := p_write_zero_reg
   io.fifo_out.payload := Relu(fifo_out_i.msb,fifo_out_i.asSInt)
-
 }
 
 object PsumBuf extends App{
-  SpinalSystemVerilog(new PsumBuf)
+  /* testing carefully of the Psum Buf*/
+  import spinal.core.sim._
+  import Common.SimUntils._
+  SIMCFG(gtkFirst = true).compile{
+    val dut = new PsumBuf
+    dut.fifo1_full.simPublic()
+    dut.fifo2_full.simPublic()
+    dut.psumFifos(0).fifo.logic.ram.simPublic()
+    dut
+  }.doSimUntilVoid{
+    dut =>
+      dut.clockDomain.forkStimulus(10)
+      dut.io.p_valid_data #= false
+      dut.io.p_init #= false
+      dut.clockDomain.waitSampling()
+      /* when the init is valid the two fifos will be write with the 0 */
+
+      def init() = { /* the init test pass */
+        dut.io.p_init #= true
+        dut.clockDomain.waitSamplingWhere(dut.fifo2_full.toBoolean && dut.fifo1_full.toBoolean)
+        val res = getMemValue(dut.psumFifos(0).fifo.logic.ram,64l)
+        res.foreach(i => assert(i == 0))
+        simSuccess()
+      }
+
+      def psumAddOne() = {
+        val data = Array.fill(4){Random.nextInt(20) - 10}
+        dut.io.pe_data.zipWithIndex.foreach(p => p._1 #= data(p._2))
+        dut.io.p_valid_data #= true
+        dut.io.p_init #= false
+        dut.io.p_write_zero #= false   /* no write the zero */
+        dut.clockDomain.waitSampling()
+        dut.io.p_valid_data #= false
+        dut.io.p_write_zero #= true
+        dut.clockDomain.waitSamplingWhere(dut.io.fifo_out.valid.toBoolean)
+
+        simSuccess()
+      }
+      psumAddOne()
+
+  }
+
 }
