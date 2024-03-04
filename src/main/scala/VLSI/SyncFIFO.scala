@@ -11,7 +11,7 @@ package VLSI
 import spinal.core._
 import spinal.lib._
 import Common.SIMCFG
-
+import Constant._
 import collection.mutable
 
 class SyncFIFO(dataWidth:Int = 25,depth:Int = 64) extends Component {
@@ -64,6 +64,22 @@ class SyncFIFO(dataWidth:Int = 25,depth:Int = 64) extends Component {
 }
 
 /* the V2 seems checks ready for latency is 2 */
+
+/* the bundle not using */
+case class fifoBundle() extends Bundle with IMasterSlave {
+  val dataIn = Bits (PE_DataWidth bits)
+  val dataOut = Bits (PE_DataWidth bits)
+  val wr_en = Bool() /* write enable*/
+  val rd_en = Bool() /* read enable */
+  val empty = Bool()
+  val full = Bool()
+
+  override def asMaster(): Unit = {
+    in(dataIn,wr_en,rd_en)
+    out(dataOut,empty,full)
+  }
+}
+
 
 class SyncFIFOV2 extends Component{
   import Constant._

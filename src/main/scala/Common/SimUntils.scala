@@ -1,5 +1,10 @@
 package Common
 
+import spinal.core._
+import spinal.lib._
+import spinal.core.sim._
+import scala.collection.mutable._
+
 object SimUntils {
 
   /* using to adapter the string width */
@@ -15,4 +20,13 @@ object SimUntils {
     }
   }
 
+
+  /* get the memory value into the array */
+  def getMemValue[T <: Data](mem:Mem[T],depth:Long) = {
+    val buffer = ArrayBuffer[BigInt]()
+    for(idx <- 0l until depth){
+      buffer += mem.getBigInt(idx)
+    }
+    buffer
+  }
 }

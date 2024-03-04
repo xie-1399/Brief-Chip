@@ -22,5 +22,9 @@ object Constant {
 
   def IfmRows = 8
   def WgtNums = 4
+  def PsumNums = 5
 
+  def Psum_FIFONum = 2
+
+  def UsingRELU = true
 }
