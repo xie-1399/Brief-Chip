@@ -18,8 +18,8 @@ class PE_FSM extends Component {
   val io = new Bundle{
     val start_conv = in Bool()
     val start_again = in Bool()
-
-
+    val cfg_ci = in UInt(2 bits)
+    val cfg_co = in UInt(2 bits)
     val ifm_read = out Bool()
     val wgt_read = out Bool()
     val p_valid_out = out Bool()
@@ -28,9 +28,12 @@ class PE_FSM extends Component {
 
   }
 
-  // val
-
-
+  val ci = Reg(UInt(6 bits)).init(0)
+  val co = Reg(UInt(6 bits)).init(0)
+  when(io.start_conv){
+    ci := (io.cfg_ci + 1) << 3
+    co := (io.cfg_co + 1) << 3
+  }
 
 
   val fsm = new StateMachine{

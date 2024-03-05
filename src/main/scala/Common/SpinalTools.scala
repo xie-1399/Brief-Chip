@@ -9,11 +9,15 @@ package Common
 
 
 import spinal.core._
+import spinal.lib._
+import spinal.lib.tools._
 
 object SpinalTools{
 
   class PrefixComponent() extends Component{
     noIoPrefix()
   }
-  
+
+  def genDiagram = HDElkDiagramGen  /* gen the simple diagram */
+
 }

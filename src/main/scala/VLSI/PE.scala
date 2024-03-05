@@ -15,7 +15,7 @@ import scala.util.Random
 
 class PE extends Component {
   import Constant._
-
+  /* 3 stages Pipe Mac unit*/
   val io = new Bundle{
     val ifm = in(Vec(SInt(Ifm_DataWidth bits), BufSize))
     val wgt = in(Vec(SInt(Wgt_DataWidth bits), BufSize))
@@ -30,7 +30,7 @@ class PE extends Component {
     product(idx) := io.ifm(idx) * io.wgt(idx)
   }
   p_sum := product.reduceBalancedTree(_ +^ _).resized
-  io.p_sum := p_sum
+  io.p_sum := RegNext(p_sum).init(0)
 }
 
 object PE extends App{
@@ -48,9 +48,11 @@ object PE extends App{
         val res = ifm.zipWithIndex.map(f => f._1 * wgt(f._2)).sum
         dut.io.ifm.zipWithIndex.foreach(f => f._1 #= ifm(f._2))
         dut.io.wgt.zipWithIndex.foreach(g => g._1 #= wgt(g._2))
-        dut.clockDomain.waitSampling(3)
+        dut.clockDomain.waitSampling(4)
         assert(res == dut.io.p_sum.toBigInt,s"${res} not equal ${dut.io.p_sum.toBigInt}")
       }
       simSuccess()
   }
 }
+
+

@@ -12,6 +12,7 @@ import Common.SIMCFG
 import spinal.core._
 import spinal.lib._
 import Constant._
+import spinal.lib.tools.HDElkDiagramGen
 
 import scala.util.Random
 
@@ -154,6 +155,10 @@ object PsumBuf extends App{
   /* testing carefully of the Psum Buf*/
   import spinal.core.sim._
   import Common.SimUntils._
+
+  /* a new way to gen the diagram */
+  /* val diagram = HDElkDiagramGen(SpinalVerilog(new PsumBuf)) */
+
   SIMCFG(gtkFirst = true).compile{
     val dut = new PsumBuf
     dut.fifo1_full.simPublic()

@@ -89,7 +89,6 @@ class PEArray extends Component {
   }
 }
 
-
 object PEArray extends App{
   import spinal.core.sim._
   /* test the PE Array */
