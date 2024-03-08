@@ -61,7 +61,7 @@ class Axi4CrossBarSim extends Component {
     read.writeData >> bus.writeData
     read.sharedCmd >> bus.sharedCmd
   })
-  
+
   axiCrossBar.build()
   io.timerInterrupt := apbclint.io.timerInterrupt.asBool
   io.softwareInterrupt := apbclint.io.softwareInterrupt.asBool
