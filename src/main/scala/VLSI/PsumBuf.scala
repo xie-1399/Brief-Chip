@@ -146,6 +146,7 @@ class PsumBuf extends Component {
   fifo2_full := psumFifos(1).io.full
   psumFifos(1).io.dataIn := fifo2_in
   fifo_out_i1 := psumFifos(1).io.dataOut
+
   /* io connect */
   io.fifo_out.valid := p_write_zero_reg
   io.fifo_out.payload := Relu(fifo_out_i.msb,fifo_out_i.asSInt)
