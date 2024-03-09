@@ -54,10 +54,18 @@ class FetchAxi4Usage extends AnyFunSuite{
 
         val jumpCheck = fork{
           Inorder.join()
+          dut.io.hold #= 0
           dut.io.jtagReset #= true
           dut.clockDomain.waitSampling()
+          /* check the reset pc jump */
 
-
+          dut.io.jtagReset #= false
+          dut.io.jump #= true
+          dut.io.jumpAddr #= 0x80000040l
+          dut.clockDomain.waitSampling()
+          dut.io.jump #= false
+          dut.io.jumpAddr.randomize()
+          dut.clockDomain.waitSampling(128)
         }
         jumpCheck.join()
         simSuccess()

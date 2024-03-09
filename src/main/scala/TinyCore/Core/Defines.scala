@@ -59,7 +59,7 @@ object Defines{
 object Instruction{
   /* the instruction format can be listed at the material */
 
-  def INST_NOP: Bits = B(19, 32 bits) /* 0x00000013 (00010011) addi x0,x0,0 */
+  def INST_NOP: Bits = B(1, 7 bits) /* not do anything */
 
   /* define the default inst */
   def INST_DEFAULT:Bits = B(1,32 bits)
