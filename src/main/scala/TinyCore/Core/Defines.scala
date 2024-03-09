@@ -1,6 +1,7 @@
 package TinyCore.Core
 
 import spinal.core._
+import spinal.lib.bus.amba4.axi._
 
 /* =======================================================
  * Author : xie-1399
@@ -150,4 +151,15 @@ object Instruction{
   def CSR_MIE = 0x304
   def CSR_MSTATUS = 0x300
   def CSR_MSCRATCH = 0x340
+}
+
+object Parameters{
+  import Defines._
+
+  /* use size and last , resp show error, and support the burst later */
+  def fetchAxi4Config = Axi4Config(addressWidth = InstBusAddrWidth, dataWidth = InstBusDataWidth, idWidth = 4, useRegion = false,
+    useBurst = false, useLock = false, useCache = false, useSize = true, useQos = false, useLen = false, useLast = true, useResp = true,
+    useProt = false, useStrb = false)
+
+
 }
