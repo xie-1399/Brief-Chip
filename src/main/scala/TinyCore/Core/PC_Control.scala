@@ -22,19 +22,21 @@ class PC_Control extends PrefixComponent{
     val jumpAddr = in UInt(InstBusAddrWidth bits)
     val hold = in UInt(HoldWidth bits)
     val pcOut = out UInt(InstBusAddrWidth bits)
+    val fetchValid = out Bool() /* show if the fetch bus cmd is valid */
   }
 
-  val PC = RegInit(UInt(InstBusAddrWidth bits)).init(CPUReset)
-
+  val PC = Reg(UInt(InstBusAddrWidth bits)).init(CPUReset)
+  val fetchValid = True
   when(io.jtagReset){
     PC := CPUReset
   }.elsewhen(io.jump === JumpEnable){
     PC := io.jumpAddr
   }.elsewhen(io.hold >= Hold_PC){
     PC := PC
+    fetchValid.clear()
   }.otherwise{
     PC := PC + 4
   }
-
   io.pcOut := PC
+  io.fetchValid := fetchValid
 }
