@@ -3,7 +3,7 @@ package TinyCore.Core
 /* =======================================================
  * Author : xie-1399
  * language: SpinalHDL v1.9.4
- * date 2024.1.29
+ * date 2024.3.9
  * Decode stage (with the comb logic) simple version
  * =======================================================
  */
