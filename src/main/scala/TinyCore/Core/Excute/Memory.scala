@@ -1,9 +1,9 @@
-package TinyCore.Core
+package TinyCore.Core.Excute
 
 import spinal.core._
-import Defines._
 import spinal.lib._
-
+import TinyCore.Core.Constant._
+import Defines._
 /* this is about the Peripheral */
 case class LsuPeripheralBusCmd() extends Bundle{
 

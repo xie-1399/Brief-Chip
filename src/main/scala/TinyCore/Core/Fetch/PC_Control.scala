@@ -1,9 +1,10 @@
-package TinyCore.Core
+package TinyCore.Core.Fetch
 
 import Common.SpinalTools.PrefixComponent
-import spinal.lib._
 import spinal.core._
-
+import TinyCore.Core.Constant._
+import Defines._
+import Instruction._
 /* =======================================================
  * Author : xie-1399
  * language: SpinalHDL v1.9.4
@@ -14,7 +15,6 @@ import spinal.core._
  */
 
 class PC_Control extends PrefixComponent{
-  import Defines._
 
   val io = new Bundle{
     val jtagReset = in Bool()
