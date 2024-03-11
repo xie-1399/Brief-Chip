@@ -1,4 +1,4 @@
-package TinyCore.Core
+package TinyCore.Core.Excute
 
 /* =======================================================
  * Author : xie-1399
@@ -10,11 +10,10 @@ package TinyCore.Core
 
 import Common.SpinalTools.PrefixComponent
 import spinal.core._
-import spinal.lib._
-
+import TinyCore.Core.Constant._
+import Defines._
 class Regfile extends PrefixComponent{
   // jtag and decode stage will send the reg file cmd
-  import Defines._
   val io = new Bundle{
     /* write the reg from ex */
     val we_i = in Bool()

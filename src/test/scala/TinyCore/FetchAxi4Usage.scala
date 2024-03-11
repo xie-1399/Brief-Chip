@@ -2,7 +2,7 @@ package TinyCore
 
 import Common.SIMCFG
 import org.scalatest.funsuite.AnyFunSuite
-import TinyCore.Core._
+import TinyCore.Core.Fetch._
 import TinyCore.Sim.AxiReadonlyMemorysim
 import spinal.core.sim._
 

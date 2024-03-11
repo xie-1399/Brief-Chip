@@ -1,11 +1,13 @@
-package TinyCore.Core
+package TinyCore.Core.Fetch
 
 import Common.SpinalTools.PrefixComponent
 import spinal.core._
 import spinal.lib._
 import spinal.lib.bus.amba4.axi._
-import spinal.lib.bus.amba4.axilite.AxiLite4
-
+import TinyCore.Core.Constant._
+import Defines._
+import Instruction._
+import TinyCore.Core.Constant.Parameters.fetchAxi4Config
 /* =======================================================
  * Author : xie-1399
  * language: SpinalHDL v1.9.4
@@ -13,7 +15,7 @@ import spinal.lib.bus.amba4.axilite.AxiLite4
  * using the AXI4 as the fetch bus to get the instruction
  * =======================================================
  */
-import Defines._
+
 case class FetchL1Cmd() extends Bundle{
   val address = UInt(InstBusAddrWidth bits)
 }
@@ -34,7 +36,7 @@ case class FetchL1Bus() extends Bundle with IMasterSlave{
   }
 
   def toAxi4():Axi4ReadOnly = {
-    val axi = Axi4ReadOnly(Parameters.fetchAxi4Config)
+    val axi = Axi4ReadOnly(fetchAxi4Config)
     val address = RegNextWhen(cmd.address,cmd.fire).init(CPUReset)
 
     axi.ar.valid := cmd.valid
@@ -63,7 +65,7 @@ class FetchAxi4 extends PrefixComponent{
     val jumpAddr = in UInt (InstBusAddrWidth bits)
     val hold = in UInt (HoldWidth bits)
 
-    val axiBus = master (Axi4ReadOnly(Parameters.fetchAxi4Config))
+    val axiBus = master (Axi4ReadOnly(fetchAxi4Config))
     val inst_o = out Bits (InstBusDataWidth bits)
     val inst_addr_o = out UInt (InstBusAddrWidth bits)
     val decode_valid  = out Bool()

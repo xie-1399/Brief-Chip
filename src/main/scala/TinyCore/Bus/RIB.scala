@@ -33,7 +33,7 @@ case class rib(addrWidth:Int = 32,dataWidth:Int = 32) extends Bundle with IMaste
 class RIB() extends PrefixComponent{
   /* 4 masters send to the 5 slaves works*/
 
-  import TinyCore.Core.Defines._
+  import TinyCore.Core.Constant.Defines._
 
   val io = new Bundle{
     val masters = Vec(slave(rib(MemAddrBus,MemBus)),MasterNum)

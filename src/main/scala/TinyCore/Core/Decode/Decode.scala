@@ -1,4 +1,4 @@
-package TinyCore.Core
+package TinyCore.Core.Decode
 
 /* =======================================================
  * Author : xie-1399
@@ -11,8 +11,9 @@ package TinyCore.Core
 import Common.SpinalTools.PrefixComponent
 import spinal.lib._
 import spinal.core._
-import Instruction._
+import TinyCore.Core.Constant._
 import Defines._
+import Instruction._
 
 /* all as output signals */
 
@@ -231,5 +232,5 @@ class Decode() extends PrefixComponent{
 }
 
 object Decode extends App{
-  SpinalSystemVerilog(new Decode)
+  SpinalVerilog(new Decode)
 }
