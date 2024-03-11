@@ -1,4 +1,4 @@
-name := "ICProjects"
+name := "Brief-Chip"
 
 ThisBuild / version := "1.0"
 ThisBuild / scalaVersion := "2.12.16"
