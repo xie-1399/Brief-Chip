@@ -12,6 +12,7 @@ import Common.SpinalTools.PrefixComponent
 import spinal.core._
 import TinyCore.Core.Constant._
 import Defines._
+
 class Regfile extends PrefixComponent{
   // jtag and decode stage will send the reg file cmd
   val io = new Bundle{

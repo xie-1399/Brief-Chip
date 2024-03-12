@@ -230,7 +230,3 @@ class Decode() extends PrefixComponent{
   inst_op <> io.opcode
   io.error := error
 }
-
-object Decode extends App{
-  SpinalVerilog(new Decode)
-}

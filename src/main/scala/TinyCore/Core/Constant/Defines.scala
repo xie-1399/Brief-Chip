@@ -2,7 +2,7 @@ package TinyCore.Core.Constant
 
 import spinal.core._
 import spinal.lib.bus.amba4.axi._
-
+import TinyCore.Core.Decode._
 /* =======================================================
  * Author : xie-1399
  * language: SpinalHDL v1.9.4
@@ -28,6 +28,7 @@ object Defines{
   def Hold_None: UInt = U(0, HoldWidth bits)
   def Hold_PC: UInt = U(1, HoldWidth bits)
   def Hold_Fetch: UInt = U(2, HoldWidth bits)
+  def Hold_Decode: UInt = U(3, HoldWidth bits)
 
   /* about Bus */
   def InstBusDataWidth = 32
@@ -160,4 +161,7 @@ object Parameters{
   def fetchAxi4Config = Axi4Config(addressWidth = InstBusAddrWidth, dataWidth = InstBusDataWidth, idWidth = 4, useRegion = false,
     useBurst = false, useLock = false, useCache = false, useSize = true, useQos = false, useLen = false, useLast = true, useResp = true,
     useProt = false, useStrb = false)
+
+
+  def decodeConfig = decodeParameters()  /* with Csr and IM instruction */
 }
