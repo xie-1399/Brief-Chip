@@ -27,7 +27,6 @@ class PsumBuf extends Component {
     val p_valid_data = in Bool() /* show the input is valid or not */
     val p_init = in Bool()
     val odd_cnt = in Bool()
-
     val fifo_out = master Flow SInt(PE_DataWidth bits)
   }
 
