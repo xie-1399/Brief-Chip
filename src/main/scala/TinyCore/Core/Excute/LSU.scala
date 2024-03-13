@@ -1,9 +1,12 @@
 package TinyCore.Core.Excute
 
+import Common.SpinalTools.PrefixComponent
 import spinal.core._
 import spinal.lib._
 import TinyCore.Core.Constant._
 import Defines._
+
+
 /* this is about the Peripheral */
 case class LsuPeripheralBusCmd() extends Bundle{
 
@@ -21,6 +24,7 @@ case class LsuPeripheralBus() extends Bundle{
 /* the data memory read signals*/
 case class DataMemReadCmd() extends Bundle{
   val address = UInt(MemAddrBus bits)
+  val mask = Bits(MemBusMask bits) /* 4 bit mask */
 }
 case class DataMemReadRsp() extends Bundle{
   val data = Bits(MemBus bits)
@@ -52,12 +56,15 @@ case class DataMemWriteBus() extends Bundle with IMasterSlave{
     slave(rsp)
   }
 }
-/* read / write the memory data */
 
+/* read / write the memory data */
 case class DataMemBus() extends Bundle with IMasterSlave{
   val read = DataMemReadBus()
   val write = DataMemWriteBus()
   override def asMaster(): Unit = {
     master(read,write)
   }
+
+  /* to the axi bus request*/
+
 }

@@ -35,6 +35,7 @@ object Defines{
   def InstBusAddrWidth = 32
   def MemBus = 32
   def MemAddrBus = 32
+  def MemBusMask = 4
   def MasterNum = 4
   def SlaveNum = 5
   def slave_0 = U(0,4 bits)

@@ -28,6 +28,7 @@ class Excute extends PrefixComponent{
     val reg_wdata_o = out Bits(RegWidth bits)
     val reg_we_o = out Bool()
     val reg_waddr_o = out UInt(RegNumLog2 bits)
+    val holdEx = out UInt(HoldWidth bits)
   }
 
   def isMulDiv(ctrl: CtrlSignals): Bool = {
@@ -64,7 +65,15 @@ class Excute extends PrefixComponent{
   )
 
   val ismuldiv = isMulDiv(io.opcode)
-
+  val memoryOp = io.opcode.illegal && io.ex_valid && io.opcode.memoryOption =/= MemoryOp.NOT  /* fetch the memory happens */
+  val writeOp = io.opcode.memoryOption === MemoryOp.STORE
+  val writeData = Bits(Xlen bits)
+  writeData := io.opcode.mask.mux(
+    Mask.WORD -> op2,
+    Mask.HALF -> op2(15 downto 0).resized,
+    Mask.WORD -> op2(7 downto 0).resized,
+  )
+  val hold = UInt(HoldWidth bits)
   val alu = new Area{
     /* deal with the alu options */
     val aluPlugin = new ALUPlugin()
@@ -82,14 +91,33 @@ class Excute extends PrefixComponent{
     muldivPlugin.io.op2 := op2
   }
 
-  val Memory = new Area{
+  val lsu = new Area{
+    /* block lsu*/
+    val dbus = master(DataMemBus())
+    dbus.read.cmd.valid := memoryOp && !writeOp
+    dbus.read.cmd.mask := io.opcode.mask.asBits
+    dbus.read.cmd.address := alu.aluPlugin.io.res.asUInt
+    dbus.read.rsp.ready := True
+
+    dbus.write.cmd.valid := memoryOp && writeOp
+    dbus.write.cmd.payload.data := writeData
+    dbus.write.cmd.payload.address := alu.aluPlugin.io.res.asUInt
+    dbus.write.rsp.ready := True
+
+    // Todo
+    when(dbus.read.cmd.valid || dbus.write.cmd.valid){
+      hold := Hold_Decode /* hold all unit */
+    }.elsewhen(dbus.read.rsp.fire || dbus.write.rsp.fire){
+      hold := 0 /* release it */
+    }
 
   }
 
-  val Csr = new Area{
+  val csr = new Area{
 
   }
 
+  /* the write enable should adapt the memory */
   io.reg_we_o := io.regs.reg_we
   io.reg_waddr_o := io.regs.reg_waddr
   io.reg_wdata_o := Mux(ismuldiv,muldiv.muldivPlugin.io.res,alu.aluPlugin.io.res)
