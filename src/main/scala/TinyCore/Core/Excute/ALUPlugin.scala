@@ -20,13 +20,18 @@ class ALUPlugin extends PrefixComponent{
     val res = out Bits(Xlen bits)
   }
 
+  /* the imm shift should be low 5 bits*/
+  val shiftIMMRange = io.op2(11 downto 5)
+  val shiftIMM = shiftIMMRange === 0 || shiftIMMRange === 32
+  val shiftOp = Mux(shiftIMM,io.op2(4 downto 0).asUInt,io.op2.asUInt)
+
   val bitsCal = io.alu.mux(
     AND -> (io.op1 & io.op2),
     OR -> (io.op1 | io.op2),
     XOR -> (io.op1 ^ io.op2),
-    SLL -> (io.op1 |<< io.op2.asUInt), /* logic shift */
-    SRL -> (io.op1 |>> io.op2.asUInt),
-    SRA -> (io.op1.asSInt >> io.op2.asUInt).asBits, /* the arithmetic shift using */
+    SLL -> (io.op1 |<< shiftOp), /* logic shift */
+    SRL -> (io.op1 |>> shiftOp),
+    SRA -> (io.op1.asSInt >> shiftOp).asBits, /* the arithmetic shift using */
     default -> io.op1
   )
   val lessU = io.alu === SLTU

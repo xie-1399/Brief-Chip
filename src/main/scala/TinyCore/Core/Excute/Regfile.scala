@@ -10,6 +10,7 @@ package TinyCore.Core.Excute
 
 import Common.SpinalTools.PrefixComponent
 import spinal.core._
+import spinal.core.sim._
 import TinyCore.Core.Constant._
 import Defines._
 

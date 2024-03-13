@@ -9,6 +9,7 @@ import Common.SpinalTools._
 class SimpleMulDivPlugin() extends PrefixComponent {
   import ALU._
 
+  /* Todo with the div 0 */
   val io = new Bundle {
     val valid = in Bool()
     val alu = in(ALU())

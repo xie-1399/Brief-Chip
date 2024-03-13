@@ -100,12 +100,10 @@ object CSR extends SpinalEnum(binarySequential){
 case class regSignals() extends Bundle with IMasterSlave {
   val reg1_rdata_o = Bits(RegWidth bits)
   val reg2_rdata_o = Bits(RegWidth bits)
-  val reg1_raddr = UInt (RegNumLog2 bits)
-  val reg2_raddr = UInt (RegNumLog2 bits)
   val reg_we = Bool()
   val reg_waddr = UInt(RegNumLog2 bits)
   override def asMaster(): Unit = {
-    out(reg1_rdata_o,reg2_rdata_o,reg1_raddr,reg2_raddr,reg_we,reg_waddr)
+    out(reg1_rdata_o,reg2_rdata_o,reg_we,reg_waddr)
   }
 }
 
@@ -146,6 +144,8 @@ class DecodeV2(p:decodeParameters) extends PrefixComponent{
     val reg = master(regSignals())
     val reg1_rdata = in Bits (RegWidth bits)
     val reg2_rdata = in Bits (RegWidth bits)
+    val reg1_raddr = out UInt(RegNumLog2 bits)
+    val reg2_raddr = out UInt(RegNumLog2 bits)
   }
 
   def Y = True
@@ -342,8 +342,8 @@ class DecodeV2(p:decodeParameters) extends PrefixComponent{
 
   /* send the reg cmd to the regfile*/
   reg.reg_waddr := rd
-  reg.reg1_raddr := rs1
-  reg.reg2_raddr := rs2
+  io.reg1_raddr := rs1
+  io.reg2_raddr := rs2
   reg.reg1_rdata_o := io.reg1_rdata
   reg.reg2_rdata_o := io.reg2_rdata
 

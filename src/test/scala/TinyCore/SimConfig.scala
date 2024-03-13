@@ -6,7 +6,7 @@ object SimConfig {
 
   def axi4ReadonlysimConfig = AxiReadonlyMemorySimConfig(
     maxOutstandingReads = 8,
-    readResponseDelay = 2,
+    readResponseDelay = 0,
     interruptProbability = 0,
     interruptMaxDelay = 0,
     defaultBurstType = 1,

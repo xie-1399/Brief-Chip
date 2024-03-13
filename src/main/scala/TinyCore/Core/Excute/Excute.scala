@@ -92,16 +92,7 @@ class Excute extends PrefixComponent{
 
   io.reg_we_o := io.regs.reg_we
   io.reg_waddr_o := io.regs.reg_waddr
-  io.reg_wdata_o := Mux(ismuldiv,alu.aluPlugin.io.res,muldiv.muldivPlugin.io.res)
-
-  val whiteBox = new Area{
-    /* for the debug use */
-    val lastStagePC = Reg(UInt(Xlen bits)).init(0)
-    lastStagePC.simPublic()
-    when(io.ex_valid && !io.opcode.illegal){
-      lastStagePC := io.inst_addr_i
-    }
-  }
+  io.reg_wdata_o := Mux(ismuldiv,muldiv.muldivPlugin.io.res,alu.aluPlugin.io.res)
 }
 
 object Excute extends App{

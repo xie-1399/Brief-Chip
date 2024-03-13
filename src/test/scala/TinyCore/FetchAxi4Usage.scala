@@ -8,7 +8,7 @@ import spinal.core.sim._
 
 import scala.collection.mutable.Queue
 import scala.util.Random
-import Untils.untils._
+import SimTools.untils._
 class FetchAxi4Usage extends AnyFunSuite{
 
   test("fetch the memory data with pc value going check"){
