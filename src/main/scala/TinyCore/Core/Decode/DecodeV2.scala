@@ -12,7 +12,8 @@ import spinal.core._
 import TinyCore.Core.Constant.Instruction._
 import TinyCore.Core.Constant.Defines._
 import TinyCore.Core.Untils._
-
+import TinyCore.Utils._
+import spinal.lib._
 case class decodeParameters(withRVI:Boolean = true,
                             withRVC:Boolean = false,
                             withRVM:Boolean = true,
@@ -86,38 +87,39 @@ object Mask extends SpinalEnum{
 }
 
 object OP1 extends SpinalEnum(binarySequential){
-  val RS1,PC = newElement()
+  val NOT,RS1,PC = newElement()
 }
 object OP2 extends SpinalEnum(binarySequential){
-  val IMM_I,IMM_S,IMM_B,IMM_J,IMM_U,RS2 = newElement()
+  val NOT,IMM_I,IMM_S,IMM_B,IMM_J,IMM_U,RS2 = newElement()
 }
 
-case class csrSignals() extends Bundle{ /* to ex and to csr regs */
-    val csr_rdata = in Bits(RegWidth bits)
-    val csr_raddr = out UInt(RegWidth bits)
-    val csr_we = out Bool()
-    val csr_waddr = out UInt(MemAddrBus bits)
+object CSR extends SpinalEnum(binarySequential){
+  val N,C,S,W = newElement()
+}
+
+case class regSignals() extends Bundle with IMasterSlave {
+  val reg1_rdata_o = Bits(RegWidth bits)
+  val reg2_rdata_o = Bits(RegWidth bits)
+  val reg_we = Bool()
+  val reg_waddr = UInt(RegNumLog2 bits)
+  override def asMaster(): Unit = {
+    out(reg1_rdata_o,reg2_rdata_o,reg_we,reg_waddr)
+  }
 }
 
 case class CtrlSignals(p:decodeParameters) extends Bundle {
   import p._
   val illegal = Bool()
-  val useRs1 = Bool()
-  val useRs2 = Bool()
-  val useRd = Bool()
   val jump = Bool()
   val fencei = Bool()
-  val compress = Bool()
-  val rs1 = UInt(5 bits)
-  val rs2 = UInt(5 bits)
-  val rd = UInt(5 bits)
   val op1 = OP1()
   val op2 = OP2()
   val mask = Mask()
   val branch = BR()
   val alu = ALU()
   val memoryOption = MemoryOp()
-  /* default : Seq(N,N,N,N,N,N,N,U(0,5 bits),U(0,5 bits),U(0,5 bits),BR.N,ALU.COPY,MemoryOp.NOT) */
+  val csr = CSR()
+  /* default : Seq(N,N,N,N,N,N,N,U(0,5 bits),U(0,5 bits),U(0,5 bits),BR.N,ALU.COPY,MemoryOp.NOT,CSR.N) */
 }
 
 object DecodeConstant{
@@ -130,16 +132,26 @@ object DecodeConstant{
 class DecodeV2(p:decodeParameters) extends PrefixComponent{
   import DecodeConstant._
   val io = new Bundle {
-    val inst = in Bits (32 bits)
-    val valid = in Bool()
-    val decodeOut = out(CtrlSignals(p))
+    val inst = in Bits (InstBusDataWidth bits)
+    val inst_addr_i = in UInt(InstBusAddrWidth bits)
+    val valid_i = in Bool()
+    val inst_o = out Bits (InstBusDataWidth bits)
+    val inst_addr_o = out UInt (InstBusAddrWidth bits)
+    val hold = in UInt(HoldWidth bits)
+    val decodeSignals = out(CtrlSignals(p))
+    val valid_o = out Bool()
     val error = out Bool()
-    val csr = ifGen(p.withCsr){csrSignals()}
+    val reg = master(regSignals())
+    val reg1_rdata = in Bits (RegWidth bits)
+    val reg2_rdata = in Bits (RegWidth bits)
+    val reg1_raddr = out UInt(RegNumLog2 bits)
+    val reg2_raddr = out UInt(RegNumLog2 bits)
   }
 
   def Y = True
   def N = False
   val ctrl = CtrlSignals(p)
+  val reg = regSignals()
   /* switch of decode*/
   val opcode = io.inst(opcodeRange)
   val rs1 = io.inst(rs1Range).asUInt
@@ -147,83 +159,83 @@ class DecodeV2(p:decodeParameters) extends PrefixComponent{
   val rd = io.inst(rdRange).asUInt
   val funct_3 = io.inst(14 downto 12)
   val funct_7 = io.inst(31 downto 25)
-  assignBundleWithList(ctrl, Seq(N, N, N, N, N, N, N, U(0, 5 bits), U(0, 5 bits), U(0, 5 bits), OP1.RS1, OP2.RS2, Mask.WORD, BR.N, ALU.COPY, MemoryOp.NOT))
-
-  p.withCsr.generate {
-    io.csr.csr_raddr := io.inst(31 downto 20).asUInt.resized
-    io.csr.csr_waddr := io.inst(31 downto 20).asUInt.resized
-    io.csr.csr_we := False
-  }
+  val holdDecode = io.hold >= Hold_Decode
+  val error = RegInit(False).setWhen(io.valid_i && !ctrl.illegal)
+  assignBundleWithList(ctrl, Seq(N, N, N, OP1.RS1, OP2.RS2, Mask.WORD, BR.N, ALU.COPY, MemoryOp.NOT,CSR.N))
+  reg.reg_we := False
   /* the decode valid drive it */
-  when(io.valid){
+  when(io.valid_i){
     switch(opcode){
       is(INST_TYPE_I){
+        reg.reg_we.set()
         switch(funct_3){
-          is(INST_ADDI) {assignBundleWithList(ctrl, Seq(Y, Y, N, Y, N, N, N, rs1, rs2, rd, OP1.RS1, OP2.IMM_I, Mask.WORD, BR.N, ALU.ADD, MemoryOp.NOT))}
-          is(INST_XORI) {assignBundleWithList(ctrl, Seq(Y, Y, N, Y, N, N, N, rs1, rs2, rd, OP1.RS1, OP2.IMM_I, Mask.WORD, BR.N, ALU.XOR, MemoryOp.NOT))}
-          is(INST_ORI) {assignBundleWithList(ctrl, Seq(Y, Y, N, Y, N, N, N, rs1, rs2, rd, OP1.RS1, OP2.IMM_I, Mask.WORD, BR.N, ALU.OR, MemoryOp.NOT))}
-          is(INST_ANDI) {assignBundleWithList(ctrl, Seq(Y, Y, N, Y, N, N, N, rs1, rs2, rd, OP1.RS1, OP2.IMM_I, Mask.WORD, BR.N, ALU.AND, MemoryOp.NOT))}
-          is(INST_SLLI) {assignBundleWithList(ctrl, Seq(Y, Y, N, Y, N, N, N, rs1, rs2, rd, OP1.RS1, OP2.IMM_I, Mask.WORD, BR.N, ALU.SLL, MemoryOp.NOT))}
+          is(INST_ADDI) {assignBundleWithList(ctrl, Seq(Y, N, N, OP1.RS1, OP2.IMM_I, Mask.WORD, BR.N, ALU.ADD, MemoryOp.NOT,CSR.N))}
+          is(INST_XORI) {assignBundleWithList(ctrl, Seq(Y, N, N, OP1.RS1, OP2.IMM_I, Mask.WORD, BR.N, ALU.XOR, MemoryOp.NOT,CSR.N))}
+          is(INST_ORI) {assignBundleWithList(ctrl, Seq(Y, N, N, OP1.RS1, OP2.IMM_I, Mask.WORD, BR.N, ALU.OR, MemoryOp.NOT,CSR.N))}
+          is(INST_ANDI) {assignBundleWithList(ctrl, Seq(Y, N, N, OP1.RS1, OP2.IMM_I, Mask.WORD, BR.N, ALU.AND, MemoryOp.NOT,CSR.N))}
+          is(INST_SLLI) {assignBundleWithList(ctrl, Seq(Y, N, N, OP1.RS1, OP2.IMM_I, Mask.WORD, BR.N, ALU.SLL, MemoryOp.NOT,CSR.N))}
           is(INST_SRI) {
-            when(funct_7 === 32){assignBundleWithList(ctrl, Seq(Y, Y, N, Y, N, N, N, rs1, rs2, rd, OP1.RS1, OP2.IMM_I, Mask.WORD, BR.N, ALU.SRA, MemoryOp.NOT))
-            }.elsewhen(funct_7 === 0){assignBundleWithList(ctrl, Seq(Y, Y, N, Y, N, N, N, rs1, rs2, rd, OP1.RS1, OP2.IMM_I, Mask.WORD, BR.N, ALU.SRL, MemoryOp.NOT))}
+            when(funct_7 === 32){assignBundleWithList(ctrl, Seq(Y, N, N, OP1.RS1, OP2.IMM_I, Mask.WORD, BR.N, ALU.SRA, MemoryOp.NOT,CSR.N))
+            }.elsewhen(funct_7 === 0){assignBundleWithList(ctrl, Seq(Y, N, N, OP1.RS1, OP2.IMM_I, Mask.WORD, BR.N, ALU.SRL, MemoryOp.NOT,CSR.N))}
           }
-          is(INST_SLTI) {assignBundleWithList(ctrl, Seq(Y, Y, N, Y, N, N, N, rs1, rs2, rd, OP1.RS1, OP2.IMM_I, Mask.WORD, BR.N, ALU.SLT, MemoryOp.NOT))}
+          is(INST_SLTI) {assignBundleWithList(ctrl, Seq(Y, N, N, OP1.RS1, OP2.IMM_I, Mask.WORD, BR.N, ALU.SLT, MemoryOp.NOT,CSR.N))}
           is(INST_SLTIU) {
-            assignBundleWithList(ctrl, Seq(Y, Y, N, Y, N, N, N, rs1, rs2, rd, OP1.RS1, OP2.IMM_I, Mask.WORD, BR.N, ALU.SLTU, MemoryOp.NOT))
+            assignBundleWithList(ctrl, Seq(Y, N, N, OP1.RS1, OP2.IMM_I, Mask.WORD, BR.N, ALU.SLTU, MemoryOp.NOT,CSR.N))
           }
         }
       }
       is(INST_TYPE_R_M){
         when(funct_7 === 0 || funct_7 === 32) {
+          reg.reg_we.set()
           switch(funct_3){
             is(INST_ADD_SUB) {
               when(funct_7 === 0 ){
-                assignBundleWithList(ctrl, Seq(Y, Y, Y, Y, N, N, N, rs1, rs2, rd, OP1.RS1, OP2.RS2, Mask.WORD,BR.N, ALU.ADD, MemoryOp.NOT))
+                assignBundleWithList(ctrl, Seq(Y, N, N, OP1.RS1, OP2.RS2, Mask.WORD,BR.N, ALU.ADD, MemoryOp.NOT,CSR.N))
               }.elsewhen(funct_7 === 32){
-                assignBundleWithList(ctrl, Seq(Y, Y, Y, Y, N, N, N, rs1, rs2, rd, OP1.RS1, OP2.RS2, Mask.WORD,BR.N, ALU.SUB, MemoryOp.NOT))
+                assignBundleWithList(ctrl, Seq(Y, N, N, OP1.RS1, OP2.RS2, Mask.WORD,BR.N, ALU.SUB, MemoryOp.NOT,CSR.N))
               }
             }
-            is(INST_XOR) {assignBundleWithList(ctrl, Seq(Y, Y, Y, Y, N, N, N, rs1, rs2, rd, OP1.RS1, OP2.RS2, Mask.WORD,BR.N, ALU.XOR, MemoryOp.NOT))}
-            is(INST_OR) {assignBundleWithList(ctrl, Seq(Y, Y, Y, Y, N, N, N, rs1, rs2, rd, OP1.RS1, OP2.RS2, Mask.WORD,BR.N, ALU.OR, MemoryOp.NOT))}
-            is(INST_AND) {assignBundleWithList(ctrl, Seq(Y, Y, Y, Y, N, N, N, rs1, rs2, rd, OP1.RS1, OP2.RS2, Mask.WORD,BR.N, ALU.AND, MemoryOp.NOT))}
-            is(INST_SLL) {assignBundleWithList(ctrl, Seq(Y, Y, Y, Y, N, N, N, rs1, rs2, rd, OP1.RS1, OP2.RS2, Mask.WORD,BR.N, ALU.SLL, MemoryOp.NOT))}
+            is(INST_XOR) {assignBundleWithList(ctrl, Seq(Y, N, N, OP1.RS1, OP2.RS2, Mask.WORD,BR.N, ALU.XOR, MemoryOp.NOT,CSR.N))}
+            is(INST_OR) {assignBundleWithList(ctrl, Seq(Y, N, N, OP1.RS1, OP2.RS2, Mask.WORD,BR.N, ALU.OR, MemoryOp.NOT,CSR.N))}
+            is(INST_AND) {assignBundleWithList(ctrl, Seq(Y, N, N, OP1.RS1, OP2.RS2, Mask.WORD,BR.N, ALU.AND, MemoryOp.NOT,CSR.N))}
+            is(INST_SLL) {assignBundleWithList(ctrl, Seq(Y, N, N, OP1.RS1, OP2.RS2, Mask.WORD,BR.N, ALU.SLL, MemoryOp.NOT,CSR.N))}
             is(INST_SR) {
               when(funct_7 === 0){
-                assignBundleWithList(ctrl, Seq(Y, Y, Y, Y, N, N, N, rs1, rs2, rd, OP1.RS1, OP2.RS2, Mask.WORD,BR.N, ALU.SRL, MemoryOp.NOT))
+                assignBundleWithList(ctrl, Seq(Y, N, N, OP1.RS1, OP2.RS2, Mask.WORD,BR.N, ALU.SRL, MemoryOp.NOT,CSR.N))
               }.elsewhen(funct_7 === 32){
-                assignBundleWithList(ctrl, Seq(Y, Y, Y, Y, N, N, N, rs1, rs2, rd, OP1.RS1, OP2.RS2, Mask.WORD,BR.N, ALU.SRA, MemoryOp.NOT))
+                assignBundleWithList(ctrl, Seq(Y, N, N, OP1.RS1, OP2.RS2, Mask.WORD,BR.N, ALU.SRA, MemoryOp.NOT,CSR.N))
               }
             }
-            is(INST_SLT) {assignBundleWithList(ctrl, Seq(Y, Y, Y, Y, N, N, N, rs1, rs2, rd, OP1.RS1, OP2.RS2, Mask.WORD,BR.N, ALU.SLT, MemoryOp.NOT))}
-            is(INST_SLTU) {assignBundleWithList(ctrl,Seq(Y, Y, Y, Y, N, N, N, rs1, rs2, rd, OP1.RS1, OP2.RS2, Mask.WORD,BR.N, ALU.SLTU, MemoryOp.NOT))}
+            is(INST_SLT) {assignBundleWithList(ctrl, Seq(Y, N, N, OP1.RS1, OP2.RS2, Mask.WORD,BR.N, ALU.SLT, MemoryOp.NOT,CSR.N))}
+            is(INST_SLTU) {assignBundleWithList(ctrl,Seq(Y, N, N, OP1.RS1, OP2.RS2, Mask.WORD,BR.N, ALU.SLTU, MemoryOp.NOT,CSR.N))}
           }
         }.elsewhen(funct_7 === 1){
           p.withRVM.generate {
+            reg.reg_we.set()
             switch(funct_3) {
               is(INST_MUL) {
-                assignBundleWithList(ctrl, Seq(Y, Y, Y, Y, N, N, N, rs1, rs2, rd, OP1.RS1, OP2.RS2, Mask.WORD, BR.N, ALU.MUL, MemoryOp.NOT))
+                assignBundleWithList(ctrl, Seq(Y, N, N, OP1.RS1, OP2.RS2, Mask.WORD, BR.N, ALU.MUL, MemoryOp.NOT,CSR.N))
               }
               is(INST_MULH) {
-                assignBundleWithList(ctrl, Seq(Y, Y, Y, Y, N, N, N, rs1, rs2, rd, OP1.RS1, OP2.RS2, Mask.WORD, BR.N, ALU.MULH, MemoryOp.NOT))
+                assignBundleWithList(ctrl, Seq(Y, N, N, OP1.RS1, OP2.RS2, Mask.WORD, BR.N, ALU.MULH, MemoryOp.NOT,CSR.N))
               }
               is(INST_MULHU) {
-                assignBundleWithList(ctrl, Seq(Y, Y, Y, Y, N, N, N, rs1, rs2, rd, OP1.RS1, OP2.RS2, Mask.WORD, BR.N, ALU.MULHU, MemoryOp.NOT))
+                assignBundleWithList(ctrl, Seq(Y, N, N, OP1.RS1, OP2.RS2, Mask.WORD, BR.N, ALU.MULHU, MemoryOp.NOT,CSR.N))
               }
               is(INST_MULHSU) {
-                assignBundleWithList(ctrl, Seq(Y, Y, Y, Y, N, N, N, rs1, rs2, rd, OP1.RS1, OP2.RS2, Mask.WORD, BR.N, ALU.MULHSU, MemoryOp.NOT))
+                assignBundleWithList(ctrl, Seq(Y, N, N, OP1.RS1, OP2.RS2, Mask.WORD, BR.N, ALU.MULHSU, MemoryOp.NOT,CSR.N))
               }
               is(INST_DIV) {
-                assignBundleWithList(ctrl, Seq(Y, Y, Y, Y, N, N, N, rs1, rs2, rd, OP1.RS1, OP2.RS2, Mask.WORD, BR.N, ALU.DIV, MemoryOp.NOT))
+                assignBundleWithList(ctrl, Seq(Y, N, N, OP1.RS1, OP2.RS2, Mask.WORD, BR.N, ALU.DIV, MemoryOp.NOT,CSR.N))
               }
               is(INST_DIVU) {
-                assignBundleWithList(ctrl, Seq(Y, Y, Y, Y, N, N, N, rs1, rs2, rd, OP1.RS1, OP2.RS2, Mask.WORD, BR.N, ALU.DIVU, MemoryOp.NOT))
+                assignBundleWithList(ctrl, Seq(Y, N, N, OP1.RS1, OP2.RS2, Mask.WORD, BR.N, ALU.DIVU, MemoryOp.NOT,CSR.N))
               }
               is(INST_REM) {
-                assignBundleWithList(ctrl, Seq(Y, Y, Y, Y, N, N, N, rs1, rs2, rd, OP1.RS1, OP2.RS2, Mask.WORD, BR.N, ALU.REM, MemoryOp.NOT))
+                assignBundleWithList(ctrl, Seq(Y, N, N, OP1.RS1, OP2.RS2, Mask.WORD, BR.N, ALU.REM, MemoryOp.NOT,CSR.N))
               }
               is(INST_REMU) {
-                assignBundleWithList(ctrl, Seq(Y, Y, Y, Y, N, N, N, rs1, rs2, rd, OP1.RS1, OP2.RS2, Mask.WORD, BR.N, ALU.REMU, MemoryOp.NOT))
+                assignBundleWithList(ctrl, Seq(Y, N, N, OP1.RS1, OP2.RS2, Mask.WORD, BR.N, ALU.REMU, MemoryOp.NOT,CSR.N))
               }
             }
           }
@@ -231,71 +243,118 @@ class DecodeV2(p:decodeParameters) extends PrefixComponent{
       }
       is(INST_TYPE_L){
         switch(funct_3){
-          is(INST_LB) {assignBundleWithList(ctrl, Seq(Y, Y, N, Y, N, N, N, rs1, rs2, rd, OP1.RS1, OP2.IMM_I, Mask.BYTE, BR.N, ALU.ADD, MemoryOp.LOAD))}
-          is(INST_LH) {assignBundleWithList(ctrl, Seq(Y, Y, N, Y, N, N, N, rs1, rs2, rd, OP1.RS1, OP2.IMM_I, Mask.HALF, BR.N, ALU.ADD, MemoryOp.LOAD))}
-          is(INST_LW) {assignBundleWithList(ctrl, Seq(Y, Y, N, Y, N, N, N, rs1, rs2, rd, OP1.RS1, OP2.IMM_I, Mask.WORD, BR.N, ALU.ADD, MemoryOp.LOAD))}
-          is(INST_LBU) {assignBundleWithList(ctrl, Seq(Y, Y, N, Y, N, N, N, rs1, rs2, rd, OP1.RS1, OP2.IMM_I, Mask.BYTE, BR.N, ALU.ADD, MemoryOp.LOAD_U))}
-          is(INST_LHU) {assignBundleWithList(ctrl, Seq(Y, Y, N, Y, N, N, N, rs1, rs2, rd, OP1.RS1, OP2.IMM_I, Mask.HALF, BR.N, ALU.ADD, MemoryOp.LOAD_U))}
+          is(INST_LB) {reg.reg_we.set();assignBundleWithList(ctrl, Seq(Y, N, N, OP1.RS1, OP2.IMM_I, Mask.BYTE, BR.N, ALU.ADD, MemoryOp.LOAD,CSR.N))}
+          is(INST_LH) {reg.reg_we.set();assignBundleWithList(ctrl, Seq(Y, N, N, OP1.RS1, OP2.IMM_I, Mask.HALF, BR.N, ALU.ADD, MemoryOp.LOAD,CSR.N))}
+          is(INST_LW) {reg.reg_we.set();assignBundleWithList(ctrl, Seq(Y, N, N, OP1.RS1, OP2.IMM_I, Mask.WORD, BR.N, ALU.ADD, MemoryOp.LOAD,CSR.N))}
+          is(INST_LBU) {reg.reg_we.set();assignBundleWithList(ctrl, Seq(Y, N, N, OP1.RS1, OP2.IMM_I, Mask.BYTE, BR.N, ALU.ADD, MemoryOp.LOAD_U,CSR.N))}
+          is(INST_LHU) {reg.reg_we.set();assignBundleWithList(ctrl, Seq(Y, N, N, OP1.RS1, OP2.IMM_I, Mask.HALF, BR.N, ALU.ADD, MemoryOp.LOAD_U,CSR.N))}
         }
       }
       is(INST_TYPE_S){
         switch(funct_3){
-          is(INST_SB){assignBundleWithList(ctrl, Seq(Y, Y, Y, N, N, N, N, rs1, rs2, rd, OP1.RS1, OP2.IMM_S, Mask.BYTE,BR.N, ALU.ADD, MemoryOp.STORE))}
-          is(INST_SH){assignBundleWithList(ctrl, Seq(Y, Y, Y, N, N, N, N, rs1, rs2, rd, OP1.RS1, OP2.IMM_S, Mask.HALF,BR.N, ALU.ADD, MemoryOp.STORE))}
-          is(INST_SW){assignBundleWithList(ctrl, Seq(Y, Y, Y, N, N, N, N, rs1, rs2, rd, OP1.RS1, OP2.IMM_S, Mask.WORD,BR.N, ALU.ADD, MemoryOp.STORE))}
+          is(INST_SB){assignBundleWithList(ctrl, Seq(Y, N, N, OP1.RS1, OP2.IMM_S, Mask.BYTE,BR.N, ALU.ADD, MemoryOp.STORE,CSR.N))}
+          is(INST_SH){assignBundleWithList(ctrl, Seq(Y, N, N, OP1.RS1, OP2.IMM_S, Mask.HALF,BR.N, ALU.ADD, MemoryOp.STORE,CSR.N))}
+          is(INST_SW){assignBundleWithList(ctrl, Seq(Y, N, N, OP1.RS1, OP2.IMM_S, Mask.WORD,BR.N, ALU.ADD, MemoryOp.STORE,CSR.N))}
         }
       }
       is(INST_TYPE_B){
         switch(funct_3){
-          is(INST_BEQ){assignBundleWithList(ctrl, Seq(Y, Y, Y, N, N, N, N, rs1, rs2, rd, OP1.PC, OP2.IMM_B, Mask.WORD,BR.EQ, ALU.ADD, MemoryOp.NOT))}
-          is(INST_BNE){assignBundleWithList(ctrl, Seq(Y, Y, Y, N, N, N, N, rs1, rs2, rd, OP1.PC, OP2.IMM_B, Mask.WORD,BR.NE, ALU.ADD, MemoryOp.NOT))}
-          is(INST_BLT){assignBundleWithList(ctrl, Seq(Y, Y, Y, N, N, N, N, rs1, rs2, rd, OP1.PC, OP2.IMM_B, Mask.WORD,BR.LT, ALU.ADD, MemoryOp.NOT))}
-          is(INST_BGE){assignBundleWithList(ctrl, Seq(Y, Y, Y, N, N, N, N, rs1, rs2, rd, OP1.PC, OP2.IMM_B, Mask.WORD,BR.GE, ALU.ADD, MemoryOp.NOT))}
-          is(INST_BLTU){assignBundleWithList(ctrl, Seq(Y, Y, Y, N, N, N, N, rs1, rs2, rd, OP1.PC, OP2.IMM_B, Mask.WORD,BR.LTU, ALU.ADD, MemoryOp.NOT))}
-          is(INST_BGEU){assignBundleWithList(ctrl, Seq(Y, Y, Y, N, N, N, N, rs1, rs2, rd, OP1.PC, OP2.IMM_B, Mask.WORD,BR.GEU, ALU.ADD, MemoryOp.NOT))}
+          is(INST_BEQ){assignBundleWithList(ctrl, Seq(Y, N, N, OP1.PC, OP2.IMM_B, Mask.WORD,BR.EQ, ALU.ADD, MemoryOp.NOT,CSR.N))}
+          is(INST_BNE){assignBundleWithList(ctrl, Seq(Y, N, N, OP1.PC, OP2.IMM_B, Mask.WORD,BR.NE, ALU.ADD, MemoryOp.NOT,CSR.N))}
+          is(INST_BLT){assignBundleWithList(ctrl, Seq(Y, N, N, OP1.PC, OP2.IMM_B, Mask.WORD,BR.LT, ALU.ADD, MemoryOp.NOT,CSR.N))}
+          is(INST_BGE){assignBundleWithList(ctrl, Seq(Y, N, N, OP1.PC, OP2.IMM_B, Mask.WORD,BR.GE, ALU.ADD, MemoryOp.NOT,CSR.N))}
+          is(INST_BLTU){assignBundleWithList(ctrl, Seq(Y, N, N, OP1.PC, OP2.IMM_B, Mask.WORD,BR.LTU, ALU.ADD, MemoryOp.NOT,CSR.N))}
+          is(INST_BGEU){assignBundleWithList(ctrl, Seq(Y, N, N, OP1.PC, OP2.IMM_B, Mask.WORD,BR.GEU, ALU.ADD, MemoryOp.NOT,CSR.N))}
         }
       }
       is(INST_JAL){
-        assignBundleWithList(ctrl, Seq(Y, N, N, Y, Y, N, N, rs1, rs2, rd, OP1.PC, OP2.IMM_J, Mask.WORD,BR.N, ALU.ADD, MemoryOp.NOT))
+        reg.reg_we.set()
+        assignBundleWithList(ctrl, Seq(Y, Y, N, OP1.PC, OP2.IMM_J, Mask.WORD,BR.N, ALU.ADD, MemoryOp.NOT,CSR.N))
       }
       is(INST_JALR){
-        assignBundleWithList(ctrl, Seq(Y, Y, N, Y, Y, N, N, rs1, rs2, rd, OP1.RS1, OP2.IMM_I, Mask.WORD, BR.JR, ALU.ADD, MemoryOp.NOT))
+        reg.reg_we.set()
+        assignBundleWithList(ctrl, Seq(Y, Y, N, OP1.RS1, OP2.IMM_I, Mask.WORD, BR.JR, ALU.ADD, MemoryOp.NOT,CSR.N))
       }
       is(INST_LUI){
-        assignBundleWithList(ctrl, Seq(Y, N, N, Y, N, N, N, rs1, rs2, rd, OP1.RS1, OP2.IMM_U, Mask.WORD,BR.N, ALU.COPY, MemoryOp.NOT))
+        reg.reg_we.set()
+        assignBundleWithList(ctrl, Seq(Y, N, N, OP1.RS1, OP2.IMM_U, Mask.WORD,BR.N, ALU.COPY, MemoryOp.NOT,CSR.N))
       }
       is(INST_AUIPC){
-        assignBundleWithList(ctrl, Seq(Y, N, N, Y, N, N, N, rs1, rs2, rd, OP1.PC, OP2.IMM_U, Mask.WORD,BR.N, ALU.ADD, MemoryOp.NOT))
+        reg.reg_we.set()
+        assignBundleWithList(ctrl, Seq(Y, N, N, OP1.PC, OP2.IMM_U, Mask.WORD,BR.N, ALU.ADD, MemoryOp.NOT,CSR.N))
       }
 
       is(INST_NOP) { /* insert with nop */
-        assignBundleWithList(ctrl, Seq(Y, N, N, N, N, N, N, rs1, rs2, rd, OP1.RS1, OP2.RS2, Mask.WORD, BR.N, ALU.COPY, MemoryOp.NOT))
+        assignBundleWithList(ctrl, Seq(Y, N, N, OP1.NOT, OP2.NOT, Mask.WORD, BR.N, ALU.COPY, MemoryOp.NOT,CSR.N))
       }
       is(INST_FENCE){
-        assignBundleWithList(ctrl, Seq(Y, N, N, N, N, Y, N, rs1, rs2, rd, OP1.RS1, OP2.RS2, Mask.WORD,BR.N, ALU.COPY, MemoryOp.NOT))
+        assignBundleWithList(ctrl, Seq(Y, N, Y, OP1.NOT, OP2.NOT, Mask.WORD,BR.N, ALU.COPY, MemoryOp.NOT,CSR.N))
       }
 
       is(INST_CSR){
         p.withCsr.generate{
           switch(funct_3){
-            is(INST_CSRRW, INST_CSRRS, INST_CSRRC){
-              io.csr.csr_we := True
-              assignBundleWithList(ctrl, Seq(Y, Y, N, Y, N, N, N, rs1, rs2, rd, OP1.RS1, OP2.RS2, Mask.WORD,BR.N, ALU.COPY, MemoryOp.NOT))
-            }
-            is(INST_CSRRWI, INST_CSRRSI, INST_CSRRCI){
-              io.csr.csr_we := True
-              assignBundleWithList(ctrl, Seq(Y, N, N, N, N, N, N, rs1, rs2, rd, OP1.RS1, OP2.RS2, Mask.WORD,BR.N, ALU.COPY, MemoryOp.NOT))
-            }
+            is(INST_CSRRW){reg.reg_we.set();assignBundleWithList(ctrl, Seq(Y, N, N, OP1.RS1, OP2.RS2, Mask.WORD,BR.N, ALU.COPY, MemoryOp.NOT,CSR.W))}
+            is(INST_CSRRS){reg.reg_we.set();assignBundleWithList(ctrl, Seq(Y, N, N, OP1.RS1, OP2.RS2, Mask.WORD,BR.N, ALU.COPY, MemoryOp.NOT,CSR.S))}
+            is(INST_CSRRC){reg.reg_we.set();assignBundleWithList(ctrl, Seq(Y, N, N, OP1.RS1, OP2.RS2, Mask.WORD,BR.N, ALU.COPY, MemoryOp.NOT,CSR.C))}
+            is(INST_CSRRWI) {reg.reg_we.set();assignBundleWithList(ctrl, Seq(Y, N, N, OP1.RS1, OP2.IMM_U, Mask.WORD, BR.N, ALU.COPY, MemoryOp.NOT, CSR.W))}
+            is(INST_CSRRSI) {reg.reg_we.set();assignBundleWithList(ctrl, Seq(Y, N, N, OP1.RS1, OP2.IMM_U, Mask.WORD, BR.N, ALU.COPY, MemoryOp.NOT, CSR.S))}
+            is(INST_CSRRCI) {reg.reg_we.set();assignBundleWithList(ctrl, Seq(Y, N, N, OP1.RS1, OP2.IMM_U, Mask.WORD, BR.N, ALU.COPY, MemoryOp.NOT, CSR.C))}
           }
 
         }
       }
     }
   }
-  io.decodeOut:= ctrl
-  io.error := io.valid && !ctrl.illegal
+
+  /* with one stage pipe out */
+  val dff_inst = new Pipe_DFF(InstBusDataWidth)
+  dff_inst.io.din := io.inst
+  dff_inst.io.hold := holdDecode || error
+  dff_inst.io.default := INST_DEFAULT
+  io.inst_o := dff_inst.io.dout
+
+  val dff_addr = new Pipe_DFF(InstBusDataWidth)
+  dff_addr.io.din := io.inst_addr_i.asBits
+  dff_addr.io.hold := holdDecode || error
+  dff_addr.io.default := ZeroWord
+  io.inst_addr_o := dff_addr.io.dout.asUInt
+
+  val dff_decodeSignals = new Pipe_DFF(ctrl.getBitsWidth)
+  dff_decodeSignals.io.din.assignFromBits(ctrl.asBits)
+  dff_decodeSignals.io.hold := holdDecode || error
+  dff_decodeSignals.io.default := B(0,ctrl.getBitsWidth bits)
+  io.decodeSignals.assignFromBits(dff_decodeSignals.io.dout)
+
+  /* the hold logic need to control */
+  val validOut = RegInit(False)
+  when(error){ /* decode exception happen */
+    validOut := False
+  }.elsewhen(holdDecode){
+    validOut := False
+  }.elsewhen(io.valid_i){
+    validOut := True
+  }.otherwise{
+    validOut := False
+  }
+  io.valid_o := validOut
+  io.error := error
+
+  /* send the reg cmd to the regfile*/
+  reg.reg_waddr := rd
+  io.reg1_raddr := rs1
+  io.reg2_raddr := rs2
+  reg.reg1_rdata_o := io.reg1_rdata
+  reg.reg2_rdata_o := io.reg2_rdata
+
+  val dff_reg = new Pipe_DFF(reg.getBitsWidth)
+  dff_reg.io.din.assignFromBits(reg.asBits)
+  dff_reg.io.hold := holdDecode || error
+  dff_reg.io.default := B(0, reg.getBitsWidth bits)
+  io.reg.assignFromBits(dff_reg.io.dout)
 }
 
+/* stop it with enum string will be better */
 object DecodeV2 extends App{
   SpinalVerilog(SpinalConfig().withoutEnumString())(new DecodeV2(decodeParameters()))
 }
