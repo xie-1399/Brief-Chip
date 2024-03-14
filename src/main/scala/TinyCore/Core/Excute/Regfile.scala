@@ -11,76 +11,83 @@ package TinyCore.Core.Excute
 import Common.SpinalTools.PrefixComponent
 import spinal.core._
 import spinal.core.sim._
+import spinal.lib._
 import TinyCore.Core.Constant._
 import Defines._
+import TinyCore.Core.Debug.JtagPort
 
-class Regfile extends PrefixComponent{
+case class rfRead() extends Bundle with IMasterSlave{
+  val Rs1Addr = UInt(RegNumLog2 bits)
+  val Rs1Data = Bits(RegWidth bits)
+  val Rs2Addr = UInt(RegNumLog2 bits)
+  val Rs2Data = Bits(RegWidth bits)
+  override def asMaster(): Unit = {
+    out(Rs1Addr,Rs2Addr)
+    in(Rs1Data,Rs2Data)
+  }
+}
+
+case class rfWrite() extends Bundle with IMasterSlave{
+  val waddr = UInt(RegNumLog2 bits)
+  val we = Bool()
+  val wdata = Bits(RegWidth bits)
+  override def asMaster(): Unit = {
+   out(wdata,we,waddr)
+  }
+}
+
+class Regfile(debug:Boolean = false) extends PrefixComponent {
   // jtag and decode stage will send the reg file cmd
-  val io = new Bundle{
+  val io = new Bundle {
     /* write the reg from ex */
-    val we_i = in Bool()
-    val waddr_i = in UInt(RegNumLog2 bits)
-    val wdata_i = in Bits(RegWidth bits)
-
-    /* write the reg from jtag */
-    val jtag_we_i = in Bool()
-    val jtag_addr_i = in UInt (RegNumLog2 bits)
-    val jtag_data_i = in Bits (RegWidth bits)
-    val jtag_data_o = out Bits(RegWidth bits)
+    val write = slave(rfWrite())
     /* read */
-    val raddr1_i = in UInt(RegNumLog2 bits)
-    val rdata1_o = out Bits (RegWidth bits)
-
-    val raddr2_i = in UInt(RegNumLog2 bits)
-    val rdata2_o = out Bits(RegWidth bits)
+    val read = slave(rfRead())
+    /* jtag port*/
+    val jtagPort = slave(JtagPort())
   }
 
-  val regfile = Mem(Bits(RegWidth bits),RegNum)
+  val regfile = Mem(Bits(RegWidth bits), RegNum)
   private val registerNames = Seq("zero", "ra", "sp", "gp", "tp", "t0", "t1", "t2", "s0_fp", "s1", "a0", "a1", "a2", "a3", "a4",
     "a5", "a6", "a7", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "s9", "s10", "s11", "t3", "t4", "t5", "t6"
   )
 
   /* debug it */
-  val whiteBox = new Area {
-    for(idx <- 0 until RegNum){
-      val regWire = Bits(RegWidth bits)
-      regWire.setName(s"x${idx}")
-      regWire := regfile.readAsync(U(idx).resized)
+  val whiteBox = debug.generate {
+    new Area {
+      for (idx <- 0 until RegNum) {
+        val regWire = Bits(RegWidth bits)
+        regWire.setName(s"x${idx}")
+        regWire := regfile.readAsync(U(idx).resized)
+      }
     }
   }
 
-  val write = new Area{
-    /* the ex comes first */
-    when(io.we_i && io.waddr_i =/= 0){
-      regfile.write(io.waddr_i,io.wdata_i)
-    }.elsewhen(io.jtag_we_i && io.jtag_addr_i =/= 0){
-      regfile.write(io.jtag_addr_i,io.jtag_data_i)
-    }
+  val write = new Area {
+    /* the ex comes first (the order should be carefully ) -> last wins */
+    regfile.write(io.jtagPort.jtag_Addr, io.jtagPort.jtag_Wdata, enable = io.jtagPort.jtag_We && io.jtagPort.jtag_Addr =/= 0)
+    regfile.write(io.write.waddr, io.write.wdata, enable = io.write.we && io.write.waddr =/= 0)
   }
 
-  val read = new Area{
-    when(io.raddr1_i === 0){
-      io.rdata1_o := 0
-    }.elsewhen(io.raddr1_i === io.waddr_i && io.we_i){
-      io.rdata1_o := io.wdata_i
-    }.otherwise {
-      io.rdata1_o := regfile.readAsync(io.raddr1_i)
-    }
+  val read = new Area {
+    val rs1 = regfile.readAsync(io.read.Rs1Addr)
+    val rs2 = regfile.readAsync(io.read.Rs2Addr)
+    val jtagData = regfile.readAsync(io.jtagPort.jtag_Addr)
 
-    when(io.raddr2_i === 0) {
-      io.rdata2_o := 0
-    }.elsewhen(io.raddr2_i === io.waddr_i && io.we_i) {
-      io.rdata2_o := io.wdata_i
-    }.otherwise {
-      io.rdata2_o := regfile.readAsync(io.raddr2_i)
-    }
-    when(io.jtag_addr_i === 0){
-      io.jtag_data_o := 0
-    }.otherwise{
-      io.jtag_data_o := regfile.readAsync(io.jtag_addr_i)
-    }
+    io.read.Rs1Data := io.read.Rs1Addr.mux(
+      U(0, RegNumLog2 bits) -> B(0, RegWidth bits),
+      io.write.waddr -> Mux(io.write.we, io.write.wdata, rs1),
+      default -> rs1
+    )
+
+    io.read.Rs2Data := io.read.Rs2Addr.mux(
+      U(0, RegNumLog2 bits) -> B(0, RegWidth bits),
+      io.write.waddr -> Mux(io.write.we, io.write.wdata, rs2),
+      default -> rs2
+    )
+
+    io.jtagPort.jtag_Rdata := Mux(io.jtagPort.jtag_Addr === 0, B(0).resized, jtagData)
   }
-
 }
 
 object Regfile extends App{

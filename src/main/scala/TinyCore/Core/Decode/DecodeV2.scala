@@ -12,6 +12,8 @@ import spinal.core._
 import TinyCore.Core.Constant.Instruction._
 import TinyCore.Core.Constant.Defines._
 import TinyCore.Core.Untils._
+import TinyCore.Core.Excute._
+import TinyCore.Core.Pipeline.pipeSignals
 import TinyCore.Utils._
 import spinal.lib._
 case class decodeParameters(withRVI:Boolean = true,
@@ -132,20 +134,14 @@ object DecodeConstant{
 class DecodeV2(p:decodeParameters) extends PrefixComponent{
   import DecodeConstant._
   val io = new Bundle {
-    val inst = in Bits (InstBusDataWidth bits)
-    val inst_addr_i = in UInt(InstBusAddrWidth bits)
-    val valid_i = in Bool()
-    val inst_o = out Bits (InstBusDataWidth bits)
-    val inst_addr_o = out UInt (InstBusAddrWidth bits)
+    val decodeInPipe = slave(pipeSignals())
+    val decodeOutPipe = master(pipeSignals())
     val hold = in UInt(HoldWidth bits)
     val decodeSignals = out(CtrlSignals(p))
-    val valid_o = out Bool()
     val error = out Bool()
-    val reg = master(regSignals())
-    val reg1_rdata = in Bits (RegWidth bits)
-    val reg2_rdata = in Bits (RegWidth bits)
-    val reg1_raddr = out UInt(RegNumLog2 bits)
-    val reg2_raddr = out UInt(RegNumLog2 bits)
+    val reg = master(regSignals()) /* to the ex */
+    /* to the regfile */
+    val rfread = master(rfRead())
   }
 
   def Y = True
@@ -153,18 +149,18 @@ class DecodeV2(p:decodeParameters) extends PrefixComponent{
   val ctrl = CtrlSignals(p)
   val reg = regSignals()
   /* switch of decode*/
-  val opcode = io.inst(opcodeRange)
-  val rs1 = io.inst(rs1Range).asUInt
-  val rs2 = io.inst(rs2Range).asUInt
-  val rd = io.inst(rdRange).asUInt
-  val funct_3 = io.inst(14 downto 12)
-  val funct_7 = io.inst(31 downto 25)
+  val opcode = io.decodeInPipe.inst(opcodeRange)
+  val rs1 = io.decodeInPipe.inst(rs1Range).asUInt
+  val rs2 = io.decodeInPipe.inst(rs2Range).asUInt
+  val rd = io.decodeInPipe.inst(rdRange).asUInt
+  val funct_3 = io.decodeInPipe.inst(14 downto 12)
+  val funct_7 = io.decodeInPipe.inst(31 downto 25)
   val holdDecode = io.hold >= Hold_Decode
-  val error = RegInit(False).setWhen(io.valid_i && !ctrl.illegal)
+  val error = RegInit(False).setWhen(io.decodeInPipe.valid && !ctrl.illegal)
   assignBundleWithList(ctrl, Seq(N, N, N, OP1.RS1, OP2.RS2, Mask.WORD, BR.N, ALU.COPY, MemoryOp.NOT,CSR.N))
   reg.reg_we := False
   /* the decode valid drive it */
-  when(io.valid_i){
+  when(io.decodeInPipe.valid){
     switch(opcode){
       is(INST_TYPE_I){
         reg.reg_we.set()
@@ -308,45 +304,25 @@ class DecodeV2(p:decodeParameters) extends PrefixComponent{
   }
 
   /* with one stage pipe out */
-  val dff_inst = new Pipe_DFF(InstBusDataWidth)
-  dff_inst.io.din := io.inst
-  dff_inst.io.hold := holdDecode || error
-  dff_inst.io.default := INST_DEFAULT
-  io.inst_o := dff_inst.io.dout
-
-  val dff_addr = new Pipe_DFF(InstBusDataWidth)
-  dff_addr.io.din := io.inst_addr_i.asBits
-  dff_addr.io.hold := holdDecode || error
-  dff_addr.io.default := ZeroWord
-  io.inst_addr_o := dff_addr.io.dout.asUInt
+  val dff_decode = new Pipe_DFF(io.decodeInPipe.getBitsWidth)
+  dff_decode.io.din.assignFromBits(io.decodeInPipe.asBits)
+  dff_decode.io.hold := holdDecode || error
+  dff_decode.io.default := 0
+  io.decodeOutPipe.assignFromBits(dff_decode.io.dout)
 
   val dff_decodeSignals = new Pipe_DFF(ctrl.getBitsWidth)
   dff_decodeSignals.io.din.assignFromBits(ctrl.asBits)
   dff_decodeSignals.io.hold := holdDecode || error
   dff_decodeSignals.io.default := B(0,ctrl.getBitsWidth bits)
   io.decodeSignals.assignFromBits(dff_decodeSignals.io.dout)
-
-  /* the hold logic need to control */
-  val validOut = RegInit(False)
-  when(error){ /* decode exception happen */
-    validOut := False
-  }.elsewhen(holdDecode){
-    validOut := False
-  }.elsewhen(io.valid_i){
-    validOut := True
-  }.otherwise{
-    validOut := False
-  }
-  io.valid_o := validOut
   io.error := error
 
   /* send the reg cmd to the regfile*/
   reg.reg_waddr := rd
-  io.reg1_raddr := rs1
-  io.reg2_raddr := rs2
-  reg.reg1_rdata_o := io.reg1_rdata
-  reg.reg2_rdata_o := io.reg2_rdata
-
+  io.rfread.Rs1Addr := rs1
+  io.rfread.Rs2Addr := rs2
+  reg.reg1_rdata_o := io.rfread.Rs1Data
+  reg.reg2_rdata_o := io.rfread.Rs2Data
   val dff_reg = new Pipe_DFF(reg.getBitsWidth)
   dff_reg.io.din.assignFromBits(reg.asBits)
   dff_reg.io.hold := holdDecode || error

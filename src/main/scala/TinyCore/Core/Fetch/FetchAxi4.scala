@@ -8,6 +8,7 @@ import TinyCore.Core.Constant._
 import Defines._
 import Instruction._
 import TinyCore.Core.Constant.Parameters.fetchAxi4Config
+import TinyCore.Core.Pipeline.pipeSignals
 /* =======================================================
  * Author : xie-1399
  * language: SpinalHDL v1.9.4
@@ -66,9 +67,7 @@ class FetchAxi4 extends PrefixComponent{
     val hold = in UInt (HoldWidth bits)
 
     val axiBus = master (Axi4ReadOnly(fetchAxi4Config))
-    val inst_o = out Bits (InstBusDataWidth bits)
-    val inst_addr_o = out UInt (InstBusAddrWidth bits)
-    val decode_valid  = out Bool()
+    val fetchOutPipe = master(pipeSignals())
   }
 
   val pcModule = new PC_Control
@@ -95,13 +94,10 @@ class FetchAxi4 extends PrefixComponent{
 
   /* connect the Fetch module */
   fetchModule.io.hold := io.hold
-  fetchModule.io.inst_i := fetchBus.rsp.payload.data
-  fetchModule.io.inst_addr_i := fetchBus.rsp.payload.address
-  fetchModule.io.fetchInValid := fetchBus.rsp.fire
-  io.decode_valid := fetchModule.io.fetchOutValid
-  io.inst_o := fetchModule.io.inst_o
-  io.inst_addr_o := fetchModule.io.inst_addr_o
-
+  fetchModule.io.fetchInPipe.inst := fetchBus.rsp.payload.data
+  fetchModule.io.fetchInPipe.pc := fetchBus.rsp.payload.address
+  fetchModule.io.fetchInPipe.valid := fetchBus.rsp.fire
+  io.fetchOutPipe <> fetchModule.io.fetchOutPipe
   io.axiBus << fetchBus.toAxi4()
 }
 

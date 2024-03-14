@@ -47,41 +47,25 @@ class Kernel extends PrefixComponent{
     val decode = new DecodeV2(decodeConfig)
     val excute = new Excute()
     val ctrl = new Ctrl()
-    /* connect the components */
 
-    regfile.io.jtag_we_i := False
-    regfile.io.jtag_addr_i := 0
-    regfile.io.jtag_data_i := 0
+    /* connect the pipeline */
+    fetchAxi4.io.fetchOutPipe <> decode.io.decodeInPipe
+    excute.io.excuteInPipe <> decode.io.decodeOutPipe
+    excute.io.opcode <> decode.io.decodeSignals
+    excute.io.regs <> decode.io.reg
+    decode.io.rfread <> regfile.io.read
+    excute.io.rfwrite <> regfile.io.write
 
+    /* connect ctrl and jtag port */
+    regfile.io.jtagPort.init()
     fetchAxi4.io.hold := ctrl.io.holdOut
     fetchAxi4.io.jump := False
     fetchAxi4.io.jumpAddr := 0
     fetchAxi4.io.jtagReset := io.jtagReset
-
-    decode.io.inst_addr_i := fetchAxi4.io.inst_addr_o
-    decode.io.inst := fetchAxi4.io.inst_o
-    decode.io.valid_i := fetchAxi4.io.decode_valid
     decode.io.hold := ctrl.io.holdOut
-
-    decode.io.reg1_rdata := regfile.io.rdata1_o
-    decode.io.reg2_rdata := regfile.io.rdata2_o
-
-    regfile.io.raddr1_i := decode.io.reg1_raddr
-    regfile.io.raddr2_i := decode.io.reg2_raddr
-
-    excute.io.opcode <> decode.io.decodeSignals
-    excute.io.ex_valid := decode.io.valid_o
-    excute.io.inst_i := decode.io.inst_o
-    excute.io.inst_addr_i := decode.io.inst_addr_o
-    excute.io.regs <> decode.io.reg
-
     ctrl.io.hold_ex := excute.io.holdEx
     ctrl.io.stageId := 0
     ctrl.io.stageError := 0
-
-    regfile.io.we_i := excute.io.reg_we_o
-    regfile.io.waddr_i := excute.io.reg_waddr_o
-    regfile.io.wdata_i := excute.io.reg_wdata_o
 
     val axiCrossBar = Axi4CrossbarFactory()
     axiCrossBar.addSlaves(io.axi4 -> (0x80000000L, 2 GiB))
@@ -103,8 +87,8 @@ class Kernel extends PrefixComponent{
       /* for the debug use get the last stage pc */
       val lastStagePC = Reg(UInt(Xlen bits)).init(0)
       lastStagePC.simPublic()
-      when(excute.io.ex_valid && excute.io.opcode.illegal) {
-        lastStagePC := excute.io.inst_addr_i
+      when(excute.io.excuteInPipe.valid && excute.io.opcode.illegal) {
+        lastStagePC := excute.io.excuteInPipe.pc
       }
     }
   }
