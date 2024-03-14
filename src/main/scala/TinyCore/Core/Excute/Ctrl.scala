@@ -2,6 +2,8 @@ package TinyCore.Core.Excute
 
 import Common.SpinalTools.PrefixComponent
 import spinal.core._
+import TinyCore.Core.Constant.Defines._
+
 /* =======================================================
  * Author : xie-1399
  * language: SpinalHDL v1.9.4
@@ -12,9 +14,17 @@ import spinal.core._
 
 class Ctrl extends PrefixComponent{
 
-  val io = new Bundle{
+  /* control the hold signals*/
 
-    // val
+  val io = new Bundle{
+    val stageError = in UInt(log2Up(stageNum) bits) /* exception capture */
+    val stageId = in UInt(log2Up(stageNum) bits)
+
+    /* hold signals from the excute */
+    val hold_ex = in UInt(HoldWidth bits)
+    val holdOut = out UInt(HoldWidth bits)
   }
+  /* big hold signals */
+  io.holdOut := io.hold_ex
 
 }

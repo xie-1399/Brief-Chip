@@ -19,7 +19,7 @@ object Defines{
   def Xlen = 32
   def JumpEnable: Bool = True
   def JumpDisable: Bool = False
-
+  def stageNum = 3
 
   /* hold the pipeline defines */
   def HoldEnable: Bool = True
@@ -165,4 +165,13 @@ object Parameters{
 
 
   def decodeConfig = decodeParameters()  /* with Csr and IM instruction */
+
+  val memoryAxi4Config = Axi4Config(addressWidth = MemAddrBus, dataWidth = MemBus, idWidth = 4, useRegion = false,
+    useBurst = false, useLock = false, useCache = false, useSize = true, useQos = false, useLen = false, useLast = true, useResp = true,
+    useProt = false, useStrb = true)
+
+  val kernelAxi4Config = Axi4Config(addressWidth = MemAddrBus, dataWidth = MemBus, idWidth = 5, useRegion = false,
+    useBurst = false, useLock = false, useCache = false, useSize = true, useQos = false, useLen = false, useLast = true, useResp = true,
+    useProt = false, useStrb = true)
+
 }

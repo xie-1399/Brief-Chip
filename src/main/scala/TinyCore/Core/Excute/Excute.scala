@@ -8,6 +8,7 @@ import TinyCore.Core.Constant.Parameters._
 import TinyCore.Core.Constant.Defines._
 import TinyCore.Core.Decode._
 import spinal.core.sim._
+import spinal.lib.bus.amba4.axi.Axi4
 /* =======================================================
  * Author : xie-1399
  * language: SpinalHDL v1.9.4
@@ -29,6 +30,7 @@ class Excute extends PrefixComponent{
     val reg_we_o = out Bool()
     val reg_waddr_o = out UInt(RegNumLog2 bits)
     val holdEx = out UInt(HoldWidth bits)
+    val axiBus = master(Axi4(memoryAxi4Config))
   }
 
   def isMulDiv(ctrl: CtrlSignals): Bool = {
@@ -71,9 +73,9 @@ class Excute extends PrefixComponent{
   writeData := io.opcode.mask.mux(
     Mask.WORD -> op2,
     Mask.HALF -> op2(15 downto 0).resized,
-    Mask.WORD -> op2(7 downto 0).resized,
+    Mask.BYTE -> op2(7 downto 0).resized
   )
-  val hold = UInt(HoldWidth bits)
+  val hold = Reg(UInt(HoldWidth bits)).init(0)
   val alu = new Area{
     /* deal with the alu options */
     val aluPlugin = new ALUPlugin()
@@ -93,24 +95,24 @@ class Excute extends PrefixComponent{
 
   val lsu = new Area{
     /* block lsu*/
-    val dbus = master(DataMemBus())
+    val dbus = DataMemBus()
     dbus.read.cmd.valid := memoryOp && !writeOp
-    dbus.read.cmd.mask := io.opcode.mask.asBits
     dbus.read.cmd.address := alu.aluPlugin.io.res.asUInt
     dbus.read.rsp.ready := True
 
     dbus.write.cmd.valid := memoryOp && writeOp
+    dbus.write.cmd.mask := io.opcode.mask.asBits
     dbus.write.cmd.payload.data := writeData
     dbus.write.cmd.payload.address := alu.aluPlugin.io.res.asUInt
     dbus.write.rsp.ready := True
 
-    // Todo
     when(dbus.read.cmd.valid || dbus.write.cmd.valid){
       hold := Hold_Decode /* hold all unit */
     }.elsewhen(dbus.read.rsp.fire || dbus.write.rsp.fire){
       hold := 0 /* release it */
     }
-
+    io.holdEx := hold
+    io.axiBus << dbus.toAxi4() /* think about to pipe it one cycle */
   }
 
   val csr = new Area{
@@ -118,9 +120,11 @@ class Excute extends PrefixComponent{
   }
 
   /* the write enable should adapt the memory */
-  io.reg_we_o := io.regs.reg_we
-  io.reg_waddr_o := io.regs.reg_waddr
-  io.reg_wdata_o := Mux(ismuldiv,muldiv.muldivPlugin.io.res,alu.aluPlugin.io.res)
+  val arbitration = new Area{
+    io.reg_we_o := io.regs.reg_we
+    io.reg_waddr_o := io.regs.reg_waddr
+    io.reg_wdata_o := Mux(ismuldiv,muldiv.muldivPlugin.io.res,alu.aluPlugin.io.res)
+  }
 }
 
 object Excute extends App{

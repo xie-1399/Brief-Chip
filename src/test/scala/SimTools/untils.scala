@@ -30,4 +30,29 @@ object untils {
     if (r.config.useRUser) r.user #= 0
   }
 
+  /* bus init with  */
+  def Axi4Init(bus: Axi4) = {
+    val axi = bus
+    val ar = axi.ar
+    val r = axi.r
+    val aw = axi.aw
+    val w = axi.w
+    val b = axi.b
+    ar.ready #= false
+    aw.ready #= false
+    w.ready #= false
+    r.valid #= false
+
+    r.data #= 0
+    if (r.config.useId) r.id #= 0
+    if (r.config.useResp) r.resp #= 0
+    if (r.config.useLast) r.last #= false
+    if (r.config.useRUser) r.user #= 0
+
+    b.valid #= false
+    if (b.config.useId) b.id #= 0
+    if (b.config.useResp) b.resp #= 0
+    if (b.config.useBUser) b.user #= 0
+  }
+
 }

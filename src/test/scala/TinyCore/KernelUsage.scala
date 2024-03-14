@@ -3,10 +3,11 @@ package TinyCore
 import Common.SIMCFG
 import org.scalatest.funsuite.AnyFunSuite
 import TinyCore.Core.Fetch._
-import TinyCore.Sim.AxiReadonlyMemorysim
+import TinyCore.Sim.{Axi4MemorySimV2, AxiReadonlyMemorysim}
 import spinal.core.sim._
 import TinyCore.Core._
 import spinal.lib.bus.amba4.axi.Axi4ReadOnly
+
 import sys.process._
 import scala.collection.mutable.Queue
 import scala.util.Random
@@ -23,7 +24,7 @@ class KernelUsage extends AnyFunSuite {
     }.doSimUntilVoid {
       dut =>
         dut.systemClockDomain.forkStimulus(10)
-        val mem = AxiReadonlyMemorysim(dut.io.axi4, dut.systemClockDomain, SimConfig.axi4ReadonlysimConfig)
+        val mem = Axi4MemorySimV2(dut.io.axi4, dut.systemClockDomain, SimConfig.axi4simConfig)
         /* first run the makefile get the arithmetic binary */
         def passSymbol = "80000058"
 //        val path = "pwd".!!
@@ -39,7 +40,7 @@ class KernelUsage extends AnyFunSuite {
         mem.start()
 
         def init() = {
-          Axi4ReadOnlyInit(dut.io.axi4, true)
+          Axi4Init(dut.io.axi4)
           dut.io.jtagReset #= false
           dut.systemClockDomain.waitSampling(5)
         }
@@ -54,4 +55,9 @@ class KernelUsage extends AnyFunSuite {
         }
     }
   }
+
+  test("lsu test"){
+
+  }
+
 }
