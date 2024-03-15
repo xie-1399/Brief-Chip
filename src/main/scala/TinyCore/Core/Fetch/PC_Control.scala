@@ -4,7 +4,7 @@ import Common.SpinalTools.PrefixComponent
 import spinal.core._
 import TinyCore.Core.Constant._
 import Defines._
-import Instruction._
+import spinal.lib._
 /* =======================================================
  * Author : xie-1399
  * language: SpinalHDL v1.9.4
@@ -21,12 +21,16 @@ class PC_Control extends PrefixComponent{
     val jump = in Bool()
     val jumpAddr = in UInt(InstBusAddrWidth bits)
     val hold = in UInt(HoldWidth bits)
-    val pcOut = out UInt(InstBusAddrWidth bits)
-    val fetchValid = out Bool() /* show if the fetch bus cmd is valid */
+    val pcOut = master Stream(out UInt(InstBusAddrWidth bits))
   }
 
   val PC = Reg(UInt(InstBusAddrWidth bits)).init(CPUReset)
-  val fetchValid = True
+  val resetDone = RegInit(False)
+  resetDone := True
+
+  val fetchValid = False
+  when(resetDone){fetchValid.set()}
+
   when(io.jtagReset){
     PC := CPUReset
   }.elsewhen(io.jump === JumpEnable){
@@ -34,9 +38,12 @@ class PC_Control extends PrefixComponent{
   }.elsewhen(io.hold >= Hold_PC){
     PC := PC
     fetchValid.clear()
-  }.otherwise{
+  }.elsewhen(resetDone && io.pcOut.fire) {
     PC := PC + 4
+  }.otherwise{
+    PC := PC
   }
-  io.pcOut := PC
-  io.fetchValid := fetchValid
+  io.pcOut.payload := PC
+  io.pcOut.valid := fetchValid
+
 }

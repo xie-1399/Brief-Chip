@@ -1,10 +1,24 @@
 package TinyCore.Core
 
 import TinyCore.Core.Decode.CtrlSignals
+import TinyCore.Core.Constant.Defines._
 import spinal.core._
 import spinal.lib._
 import spinal.lib.eda.bench._
 import spinal.lib.eda.xilinx.VivadoFlow
+
+object Pipeline{
+  case class pipeSignals() extends Bundle with IMasterSlave {
+    val pc = UInt(InstBusAddrWidth bits)
+    val inst = Bits(InstBusDataWidth bits)
+    val valid = Bool()
+
+    override def asMaster(): Unit = {
+      out(pc, inst, valid)
+    }
+  }
+}
+
 object Evaluate{
 
   /* test if 100 MHZ can work */
