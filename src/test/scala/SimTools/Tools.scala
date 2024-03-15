@@ -1,8 +1,11 @@
 package SimTools
+
 import spinal.core._
 import spinal.core.sim._
 import spinal.lib.bus.amba4.axi._
-object untils {
+import scala.io.Source
+
+object Tools {
 
   def HexStringWithWidth(hex: String, width: Int, fill: String = "0", left: Boolean = true): String = {
     if (hex.length < width) {
@@ -14,6 +17,17 @@ object untils {
     } else {
       hex
     }
+  }
+
+  def readFile(filePath: String, logIt: Boolean = false) = {
+    /* read the file line by line */
+    val fileSource = Source.fromFile(filePath)
+    if (logIt) {
+      for (lines <- fileSource.getLines()) {
+        println(lines) /* the file will show in the format */
+      }
+    }
+    fileSource.getLines()
   }
 
   /* master init */

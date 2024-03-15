@@ -8,12 +8,13 @@ import spinal.core.sim._
 
 import scala.collection.mutable.Queue
 import scala.util.Random
-import SimTools.untils._
+import SimTools.Tools._
 class FetchAxi4Usage extends AnyFunSuite{
 
+  /* in the vcs simulation -> a good idea is using the load simulation result */
   test("fetch the memory data with pc value going check"){
 
-    SIMCFG(gtkFirst = true).compile{
+    SIMCFG().compile{
       val dut = new FetchAxi4()
       dut
     }.doSimUntilVoid{
@@ -44,9 +45,10 @@ class FetchAxi4Usage extends AnyFunSuite{
           /* hold signals happens occur */
           while (index < (1024 / 4)){
             dut.io.hold #= Random.nextInt(3)
-              if(dut.io.decode_valid.toBoolean){
+              if(dut.io.fetchOutPipe.valid.toBoolean){
+                assert(queue.dequeue() == HexStringWithWidth(dut.io.fetchOutPipe.inst.toLong.toHexString,8))
+                assert(dut.io.fetchOutPipe.pc.toLong.toHexString === (0x80000000l + index * 4).toHexString )
                 index += 1
-                assert(queue.dequeue() == HexStringWithWidth(dut.io.inst_o.toLong.toHexString,8))
               }
             dut.clockDomain.waitSampling()
           }

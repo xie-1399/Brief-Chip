@@ -68,11 +68,12 @@ class Kernel extends PrefixComponent{
     ctrl.io.stageError := 0
 
     val axiCrossBar = Axi4CrossbarFactory()
-    axiCrossBar.addSlaves(io.axi4 -> (0x80000000L, 2 GiB))
+    axiCrossBar.addSlaves(io.axi4 -> (0x80000000l, 2 GiB))
     axiCrossBar.addConnections(
       fetchAxi4.io.axiBus -> List(io.axi4),
       excute.io.axiBus -> List(io.axi4)
     )
+    /* add pipeline later */
     axiCrossBar.addPipelining(io.axi4)((readCrossbar, highspeedBus) => {
       readCrossbar.readCmd >> highspeedBus.readCmd
       readCrossbar.readRsp << highspeedBus.readRsp

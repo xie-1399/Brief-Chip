@@ -82,14 +82,15 @@ class FetchAxi4 extends PrefixComponent{
   /* send the bus request out */
   val fetchBus = FetchL1Bus()
   val fetchModule = new Fetch
-  when(fetchBus.cmd.valid){
+  when(fetchBus.cmd.fire){
     fetchHold := Hold_Fetch  /* block */
   }.elsewhen(fetchBus.rsp.fire){
     fetchHold := 0  /* release */
   }
 
-  fetchBus.cmd.address := pcModule.io.pcOut
-  fetchBus.cmd.valid := pcModule.io.fetchValid
+  fetchBus.cmd.address := pcModule.io.pcOut.payload
+  fetchBus.cmd.valid := pcModule.io.pcOut.valid
+  pcModule.io.pcOut.ready := fetchBus.cmd.ready
   fetchBus.rsp.ready := True
 
   /* connect the Fetch module */

@@ -64,14 +64,6 @@ class Excute extends PrefixComponent{
   )
 
   val ismuldiv = isMulDiv(io.opcode)
-  val memoryOp = io.opcode.illegal && io.excuteInPipe.valid && io.opcode.memoryOption =/= MemoryOp.NOT  /* fetch the memory happens */
-  val writeOp = io.opcode.memoryOption === MemoryOp.STORE
-  val writeData = Bits(Xlen bits)
-  writeData := io.opcode.mask.mux(
-    Mask.WORD -> op2,
-    Mask.HALF -> op2(15 downto 0).resized,
-    Mask.BYTE -> op2(7 downto 0).resized
-  )
   val hold = Reg(UInt(HoldWidth bits)).init(0)
   val alu = new Area{
     /* deal with the alu options */
@@ -90,25 +82,41 @@ class Excute extends PrefixComponent{
     muldivPlugin.io.op2 := op2
   }
 
+  /* the lsu unit should be consider */
+
   val lsu = new Area{
-    /* block lsu*/
+    /* block lsu with one cycle latency */
+    val memoryOp = io.opcode.illegal && io.excuteInPipe.valid && io.opcode.memoryOption =/= MemoryOp.NOT
+    val readIt = RegInit(False).setWhen(io.opcode.illegal && io.excuteInPipe.valid && (io.opcode.memoryOption === MemoryOp.LOAD || io.opcode.memoryOption === MemoryOp.LOAD_U))
+    val writeIt = RegInit(False).setWhen(io.opcode.illegal && io.excuteInPipe.valid && io.opcode.memoryOption === MemoryOp.STORE) /* fetch the memory happens */
+    val mask = RegNextWhen(io.opcode.mask,memoryOp).init(Mask.WORD)
+    val writeData = Reg(Bits(Xlen bits)).init(0)
+    writeData := mask.mux(
+      Mask.WORD -> op2,
+      Mask.HALF -> op2(15 downto 0).resized,
+      Mask.BYTE -> op2(7 downto 0).resized
+    )
+
     val dbus = DataMemBus()
-    dbus.read.cmd.valid := memoryOp && !writeOp
+    dbus.read.cmd.valid := readIt
     dbus.read.cmd.address := alu.aluPlugin.io.res.asUInt
     dbus.read.rsp.ready := True
 
-    dbus.write.cmd.valid := memoryOp && writeOp
+    dbus.write.cmd.valid := writeIt
     dbus.write.cmd.mask := io.opcode.mask.asBits
     dbus.write.cmd.payload.data := writeData
     dbus.write.cmd.payload.address := alu.aluPlugin.io.res.asUInt
     dbus.write.rsp.ready := True
 
-    when(dbus.read.cmd.valid || dbus.write.cmd.valid){
+    when(memoryOp){
       hold := Hold_Decode /* hold all unit */
     }.elsewhen(dbus.read.rsp.fire || dbus.write.rsp.fire){
       hold := 0 /* release it */
     }
     io.holdEx := hold
+
+    writeIt.clearWhen(dbus.write.cmd.fire)
+    readIt.clearWhen(dbus.read.cmd.fire)
     io.axiBus << dbus.toAxi4() /* think about to pipe it one cycle */
   }
 

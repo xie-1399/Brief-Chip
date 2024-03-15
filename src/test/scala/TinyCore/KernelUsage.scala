@@ -2,24 +2,20 @@ package TinyCore
 
 import Common.SIMCFG
 import org.scalatest.funsuite.AnyFunSuite
-import TinyCore.Core.Fetch._
-import TinyCore.Sim.{Axi4MemorySimV2, AxiReadonlyMemorysim}
+import TinyCore.Sim.Axi4MemorySimV2
 import spinal.core.sim._
+import spinal.core._
 import TinyCore.Core._
-import spinal.lib.bus.amba4.axi.Axi4ReadOnly
-
-import sys.process._
-import scala.collection.mutable.Queue
-import scala.util.Random
-import SimTools.untils._
+import SimTools.Tools._
 
 
 class KernelUsage extends AnyFunSuite {
   /* the trace is worked */
   test("Arithmetic") {
-    SIMCFG(gtkFirst = true).compile {
+    SIMCFG().compile {
       val dut = new Kernel()
       dut.core.regfile.regfile.simPublic()
+      dut.core.regfile.io.simPublic()
       dut
     }.doSimUntilVoid {
       dut =>
@@ -27,28 +23,22 @@ class KernelUsage extends AnyFunSuite {
         val mem = Axi4MemorySimV2(dut.io.axi4, dut.systemClockDomain, SimConfig.axi4simConfig)
         /* first run the makefile get the arithmetic binary */
         def passSymbol = "80000058"
-//        val path = "pwd".!!
-//        val cmd = s"cd ${path}/ext/codes"
-//        try{
-//          val res = cmd.!!
-//          println(res)
-//        }catch {
-//          case e:Throwable => println("compile the arithmetic codes fail")
-//        }
-
         mem.memory.loadBinary(0x80000000l, "ext/codes/Arithmetic.bin") // add the test file
         mem.start()
-
+        val traces = readFile("src/test/scala/TinyCore/Trace/Arithmetic").toArray
         def init() = {
           Axi4Init(dut.io.axi4)
           dut.io.jtagReset #= false
           dut.systemClockDomain.waitSampling(5)
         }
-
         init()
         val lastStagePC = dut.core.whiteBox.lastStagePC
+        var index = 0
         dut.systemClockDomain.onSamplings {
-          // println("x1 regs: " + dut.core.regfile.regfile.getBigInt(1).toLong)
+          if(dut.core.regfile.io.write.we.toBoolean && dut.core.regfile.io.write.waddr.toBigInt == 1){
+            assert(traces(index) == dut.core.regfile.io.write.wdata.toBigInt.toString())
+            index += 1
+          }
           if (lastStagePC.toLong.toHexString == passSymbol) {
             simSuccess()
           }
@@ -57,6 +47,10 @@ class KernelUsage extends AnyFunSuite {
   }
 
   test("lsu test"){
+
+    /* write the memory and read the memory with mask on*/
+
+
 
   }
 
