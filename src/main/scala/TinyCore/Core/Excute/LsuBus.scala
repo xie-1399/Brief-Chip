@@ -67,6 +67,7 @@ case class LsuPeripheralBus() extends Bundle with IMasterSlave{
     apb.PWRITE := cmd.write
     apb.PADDR := cmd.payload.address
     apb.PWDATA := cmd.payload.data
+    apb.PENABLE := state
 
     cmd.ready := True
     rsp.valid := apb.PENABLE && apb.PSEL(0) && apb.PREADY && !apb.PWRITE

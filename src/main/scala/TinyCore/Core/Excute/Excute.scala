@@ -9,6 +9,7 @@ import TinyCore.Core.Constant.Defines._
 import TinyCore.Core.Decode._
 import TinyCore.Core.Pipeline.pipeSignals
 import spinal.core.sim._
+import spinal.lib.bus.amba3.apb.Apb3
 import spinal.lib.bus.amba4.axi.Axi4
 /* =======================================================
  * Author : xie-1399
@@ -28,6 +29,7 @@ class Excute extends PrefixComponent{
     val rfwrite = master(rfWrite())
     val holdEx = out UInt(HoldWidth bits)
     val axiBus = master(Axi4(memoryAxi4Config))
+    val ioBus = master(Apb3(MemAddrBus,MemBus))
   }
 
   def isMulDiv(ctrl: CtrlSignals): Bool = {
@@ -90,45 +92,46 @@ class Excute extends PrefixComponent{
     val readIt = RegInit(False).setWhen(io.opcode.illegal && io.excuteInPipe.valid && (io.opcode.memoryOption === MemoryOp.LOAD || io.opcode.memoryOption === MemoryOp.LOAD_U))
     val writeIt = RegInit(False).setWhen(io.opcode.illegal && io.excuteInPipe.valid && io.opcode.memoryOption === MemoryOp.STORE) /* fetch the memory happens */
     val mask = RegNextWhen(io.opcode.mask,memoryOp).init(Mask.WORD)
+    val address = RegNextWhen(alu.aluPlugin.io.res.asUInt,memoryOp).init(0)
     val writeData = Reg(Bits(Xlen bits)).init(0)
     writeData := mask.mux(
       Mask.WORD -> op2,
       Mask.HALF -> op2(15 downto 0).resized,
       Mask.BYTE -> op2(7 downto 0).resized
     )
+    val memoryCmd = MemoryCmd()
+    memoryCmd.valid := readIt || writeIt
+    memoryCmd.mask := mask.asBits
+    memoryCmd.data := writeData
+    memoryCmd.write := writeIt
+    memoryCmd.address := address
 
-    val dbus = DataMemBus()
-    dbus.read.cmd.valid := readIt
-    dbus.read.cmd.address := alu.aluPlugin.io.res.asUInt
-    dbus.read.rsp.ready := True
-
-    dbus.write.cmd.valid := writeIt
-    dbus.write.cmd.mask := io.opcode.mask.asBits
-    dbus.write.cmd.payload.data := writeData
-    dbus.write.cmd.payload.address := alu.aluPlugin.io.res.asUInt
-    dbus.write.rsp.ready := True
+    val splitIt = SplitBus()
+    splitIt.io.memoryCmd <> memoryCmd
 
     when(memoryOp){
       hold := Hold_Decode /* hold all unit */
-    }.elsewhen(dbus.read.rsp.fire || dbus.write.rsp.fire){
+    }.elsewhen(splitIt.io.dBus.read.rsp.fire || splitIt.io.dBus.write.rsp.fire || splitIt.io.peripheralBus.rsp.valid){
       hold := 0 /* release it */
     }
     io.holdEx := hold
+    writeIt.clearWhen(splitIt.io.dBus.write.cmd.fire || splitIt.io.peripheralBus.cmd.fire)
+    readIt.clearWhen(splitIt.io.dBus.read.cmd.fire || splitIt.io.peripheralBus.cmd.fire)
 
-    writeIt.clearWhen(dbus.write.cmd.fire)
-    readIt.clearWhen(dbus.read.cmd.fire)
-    io.axiBus << dbus.toAxi4() /* think about to pipe it one cycle */
+    io.axiBus << splitIt.io.dBus.toAxi4()
+    io.ioBus << splitIt.io.peripheralBus.toApb3()
   }
 
   val csr = new Area{
 
   }
 
-  /* the write enable should adapt the memory */
+  /* Todo  */
   val arbitration = new Area{
-    io.rfwrite.we := io.regs.reg_we
-    io.rfwrite.waddr := io.regs.reg_waddr
-    io.rfwrite.wdata := Mux(ismuldiv,muldiv.muldivPlugin.io.res,alu.aluPlugin.io.res)
+    /* control the write Back unit */
+    // io.rfwrite.we := Mux(io.regs.reg_we)
+    // io.rfwrite.waddr := io.regs.reg_waddr
+    // io.rfwrite.wdata := Mux(!lsu.memoryOp,Mux(ismuldiv,muldiv.muldivPlugin.io.res,alu.aluPlugin.io.res))
   }
 }
 
