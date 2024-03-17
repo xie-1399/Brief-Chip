@@ -16,6 +16,8 @@ object Defines{
 
   /* cpu top */
   def CPUReset = 0x80000000l
+  def IoRange = U(1,4 bits)
+  def MemoryRange = U(8,4 bits)
   def Xlen = 32
   def JumpEnable: Bool = True
   def JumpDisable: Bool = False
