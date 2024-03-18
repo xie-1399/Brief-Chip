@@ -8,7 +8,7 @@ import scala.math.pow
  * Author : xie-1399
  * language: SpinalHDL v1.9.4
  * date 2024.1.28
- * the simple ram can use the rib bus read and write it
+ * the simple ram can use the apb bus read and write it
  * =======================================================
  */
 

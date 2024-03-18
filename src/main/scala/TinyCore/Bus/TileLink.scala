@@ -1,7 +1,11 @@
 package TinyCore.Bus
 
-/* learn about the tilelink bus protecl */
+import spinal.core._
+import spinal.lib._
 
-class TileLink {
+
+
+class TileLink extends Component {
+  /* how to build the TileLink bus */
 
 }
