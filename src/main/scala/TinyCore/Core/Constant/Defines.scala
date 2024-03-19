@@ -47,7 +47,6 @@ object Defines{
   def slave_4 = U(4,4 bits)
 
 
-
   /* some constant value */
   def ZeroWord: Bits = B(0, InstBusDataWidth bits)
 
@@ -176,4 +175,7 @@ object Parameters{
     useBurst = false, useLock = false, useCache = false, useSize = true, useQos = false, useLen = false, useLast = true, useResp = true,
     useProt = false, useStrb = true)
 
+  /* Peripheral Config */
+  def RomSize = 4 KiB
+  def RamSize = 16 KiB
 }

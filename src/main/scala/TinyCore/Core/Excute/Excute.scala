@@ -126,12 +126,23 @@ class Excute extends PrefixComponent{
 
   }
 
-  /* Todo  */
-  val arbitration = new Area{
+  val jump = new Area{
+
+  }
+
+
+  /* Todo with It */
+  val writeBack = new Area{
     /* control the write Back unit */
-    // io.rfwrite.we := Mux(io.regs.reg_we)
-    // io.rfwrite.waddr := io.regs.reg_waddr
-    // io.rfwrite.wdata := Mux(!lsu.memoryOp,Mux(ismuldiv,muldiv.muldivPlugin.io.res,alu.aluPlugin.io.res))
+    val lsuWriteBack = RegInit(False)
+    val lsuWriteIt = lsu.splitIt.io.dBus.read.rsp.fire || lsu.splitIt.io.peripheralBus.rsp.fire
+    lsuWriteBack.setWhen(lsu.memoryOp)
+    lsuWriteBack.clearWhen(lsu.splitIt.io.dBus.read.rsp.fire || lsu.splitIt.io.peripheralBus.rsp.fire)
+
+    /* think about it*/
+//    io.rfwrite.we := Mux(lsuWriteBack || lsu.memoryOp,lsuWriteBack,io.regs.reg_we)
+//    io.rfwrite.waddr := io.regs.reg_waddr
+//    io.rfwrite.wdata := Mux(!lsu.memoryOp,Mux(ismuldiv,muldiv.muldivPlugin.io.res,alu.aluPlugin.io.res))
   }
 }
 

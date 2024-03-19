@@ -17,18 +17,20 @@ import spinal.lib.bus.amba3.apb.sim.Apb3Driver
 
 import scala.math.pow
 
-class Apb3Rom(addrWidth:Int = 10,dataWidth:Int = 32) extends PrefixComponent{
+class Apb3Rom(addrWidth:Int = 32,dataWidth:Int = 32) extends PrefixComponent{
+  import TinyCore.Core.Constant.Parameters._
   val io = new Bundle {
     val apb = slave (Apb3(addrWidth,dataWidth))
   }
-  def depth = pow(2, addrWidth).toInt
+  val depth = RomSize / dataWidth
+  val addr = log2Up(depth)
   val rom = Mem(Bits(dataWidth bits), depth)
   // rom.initBigInt(Seq(0x00200313,0x00200313))
   val readIt = io.apb.PENABLE && !io.apb.PWRITE && io.apb.PSEL(0)
   val delay = RegNext(readIt).init(False)
   io.apb.PREADY := delay
   io.apb.PSLVERROR.clear()
-  io.apb.PRDATA := rom.readSync(io.apb.PADDR,enable = readIt)
+  io.apb.PRDATA := rom.readSync(io.apb.PADDR(addr - 1 downto 0),enable = readIt)
 }
 
 /* seems the memory sim init is ready*/
