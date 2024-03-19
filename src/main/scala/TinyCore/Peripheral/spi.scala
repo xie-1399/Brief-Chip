@@ -63,9 +63,6 @@ class spi(addrWidth:Int = 32,dataWidth:Int = 32) extends PrefixComponent {
     clk_cnt := 0
   }
 
-
-
-
   /* write and read about the regs internal */
   val regs = new Area {
     spi_status(0) := enable /* busy or not*/

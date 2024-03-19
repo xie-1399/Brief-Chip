@@ -23,7 +23,7 @@ class KernelUsage extends AnyFunSuite {
         val mem = Axi4MemorySimV2(dut.io.axi4, dut.systemClockDomain, SimConfig.axi4simConfig)
         /* first run the makefile get the arithmetic binary */
         def passSymbol = "80000058"
-        mem.memory.loadBinary(0x80000000l, "ext/codes/Arithmetic.bin") // add the test file
+        mem.memory.loadBinary(0x80000000l, "ext/codes/Arithmetic/Arithmetic.bin") // add the test file
         mem.start()
         val traces = readFile("src/test/scala/TinyCore/Trace/Arithmetic").toArray
         def init() = {

@@ -11,15 +11,13 @@ package TinyCore.Peripheral
 import Common.SpinalTools.PrefixComponent
 import spinal.core._
 import spinal.lib._
+import spinal.lib.bus.amba3.apb._
 
-class gpio(addrWidth:Int = 32,dataWidth:Int = 32,gpioWidth:Int = 2) extends PrefixComponent{
+class Apb3Gpio(addrWidth:Int = 32,dataWidth:Int = 32,gpioWidth:Int = 2) extends PrefixComponent{
   val io = new Bundle{
-    val wr = in Bool()
-    val addr = in UInt(addrWidth bits)
-    val dataIn = in Bits(dataWidth bits) /* used to write the the regs in the GPIO module*/
+    val apb = slave (Apb3(addrWidth,dataWidth))
     val gpi = in Bits(gpioWidth bits)
     val gpo = out Bits(gpioWidth bits)
-    val dataOut = out Bits(dataWidth bits) /* used to read the regs in the GPIO module */
   }
   require(gpioWidth <= 16)
 
@@ -28,15 +26,19 @@ class gpio(addrWidth:Int = 32,dataWidth:Int = 32,gpioWidth:Int = 2) extends Pref
 
   val gpio_ctrl = Reg(Bits(dataWidth bits)) .init(0)
   val gpio_data = Reg(Bits(gpioWidth bits)) .init(0)
+  val error = RegInit(False)
 
   /* first config the ctrl and data regs*/
   /* using the ctrl -> 1 : output 2:input */
+  val writeIt = io.apb.PSEL(0) && io.apb.PWRITE && io.apb.PENABLE && io.apb.PREADY
 
-  when(io.wr){
-    when(io.addr(3 downto 0) === GPIO_CTRL){
-      gpio_ctrl := io.dataIn
-    }.elsewhen(io.addr(3 downto 0) === GPIO_DATA){
-      gpio_data := io.dataIn(gpioWidth - 1 downto 0)
+  when(writeIt){
+    when(io.apb.PADDR(3 downto 0) === GPIO_CTRL){
+      gpio_ctrl := io.apb.PWDATA
+    }.elsewhen(io.apb.PADDR(3 downto 0) === GPIO_DATA){
+      gpio_data := io.apb.PWDATA(gpioWidth - 1 downto 0)
+    }.otherwise{
+      error.set()
     }
   }.otherwise{
     /* using the 2 bits control one */
@@ -48,14 +50,17 @@ class gpio(addrWidth:Int = 32,dataWidth:Int = 32,gpioWidth:Int = 2) extends Pref
     )
   }
 
-  io.dataOut := io.addr(3 downto 0).mux(
+  io.apb.PRDATA := io.apb.PADDR(3 downto 0).mux(
     GPIO_DATA -> gpio_data.resized,
     GPIO_CTRL -> gpio_ctrl,
     default -> B(0,dataWidth bits)
   )
   io.gpo := gpio_data
+  io.apb.PSLVERROR := error
+  io.apb.PREADY := True
 }
 
-object gpio extends App{
-  SpinalVerilog(new gpio(32,32,16))
+/* Todo with test goes run */
+object Apb3Gpio extends App{
+  SpinalVerilog(new Apb3Gpio(32,32,2))
 }

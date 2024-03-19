@@ -5,10 +5,10 @@ RISCV_GCC := riscv64-unknown-elf-gcc
 RISCV_OBJCOPY := riscv64-unknown-elf-objcopy
 RISCV_OBJDUMP := riscv64-unknown-elf-objdump
 
-TARGET := Arithmetic
-SOURCE := Arithmetic.S
+TARGET := Memory
+SOURCE := Memory.S
 
-LINKER_SCRIPT := link.ld
+LINKER_SCRIPT := ../link.ld
 RISCV_ARCH := rv32im
 RISCV_ABI := ilp32
 RISCV_MCMODEL := medlow

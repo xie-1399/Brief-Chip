@@ -9,6 +9,7 @@ import TinyCore.Core.Decode._
 import TinyCore.Core.Constant.Parameters._
 import TinyCore.Core.Constant.Defines._
 import TinyCore.Core.Excute._
+import spinal.lib.bus.amba3.apb._
 import spinal.lib.bus.amba4.axi._
 /* =======================================================
  * Author : xie-1399
@@ -24,6 +25,7 @@ class Kernel extends PrefixComponent{
     val reset = in Bool()
     val jtagReset = in Bool()
     val axi4 = master (Axi4(kernelAxi4Config))
+    val apb = master(Apb3(kernelApb3Config))
   }
 
   val AsyncResetClockDomain = ClockDomain(
@@ -83,6 +85,7 @@ class Kernel extends PrefixComponent{
       writeCrossbar.writeRsp << highspeedBus.writeRsp
     })
     axiCrossBar.build()
+    excute.io.ioBus >> io.apb
 
     val whiteBox = new Area {
       /* for the debug use get the last stage pc */

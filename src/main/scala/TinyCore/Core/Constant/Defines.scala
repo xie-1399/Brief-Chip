@@ -3,6 +3,7 @@ package TinyCore.Core.Constant
 import spinal.core._
 import spinal.lib.bus.amba4.axi._
 import TinyCore.Core.Decode._
+import spinal.lib.bus.amba3.apb.Apb3Config
 /* =======================================================
  * Author : xie-1399
  * language: SpinalHDL v1.9.4
@@ -16,6 +17,8 @@ object Defines{
 
   /* cpu top */
   def CPUReset = 0x80000000l
+  def IoRange = U(1,4 bits)
+  def MemoryRange = U(8,4 bits)
   def Xlen = 32
   def JumpEnable: Bool = True
   def JumpDisable: Bool = False
@@ -43,7 +46,6 @@ object Defines{
   def slave_2 = U(2,4 bits)
   def slave_3 = U(3,4 bits)
   def slave_4 = U(4,4 bits)
-
 
 
   /* some constant value */
@@ -174,4 +176,9 @@ object Parameters{
     useBurst = false, useLock = false, useCache = false, useSize = true, useQos = false, useLen = false, useLast = true, useResp = true,
     useProt = false, useStrb = true)
 
+  val kernelApb3Config = Apb3Config(addressWidth = MemAddrBus, dataWidth = MemBus)
+
+  /* Peripheral Config */
+  def RomSize = 4 KiB
+  def RamSize = 16 KiB
 }
