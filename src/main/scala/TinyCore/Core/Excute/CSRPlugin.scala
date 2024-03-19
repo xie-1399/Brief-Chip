@@ -13,7 +13,7 @@ import Instruction._
  * =======================================================
  */
 
-class CSR extends PrefixComponent{
+class CSRPlugin extends PrefixComponent{
 
   val io = new Bundle{
     /* the excute stage read and write the CSR*/
@@ -79,6 +79,6 @@ class CSR extends PrefixComponent{
 
 }
 
-object CSR extends App{
-  SpinalSystemVerilog(new CSR)
+object CSRPlugin extends App{
+  SpinalSystemVerilog(new CSRPlugin)
 }

@@ -1,0 +1,49 @@
+
+Arithmetic:     file format elf32-littleriscv
+
+
+Disassembly of section .text:
+
+80000000 <_start>:
+80000000:	00200313          	li	t1,2
+80000004:	00600293          	li	t0,6
+80000008:	00000093          	li	ra,0
+8000000c:	026280b3          	mul	ra,t0,t1
+80000010:	025080b3          	mul	ra,ra,t0
+80000014:	00000093          	li	ra,0
+80000018:	0262c0b3          	div	ra,t0,t1
+8000001c:	0260e0b3          	rem	ra,ra,t1
+80000020:	00000093          	li	ra,0
+80000024:	006280b3          	add	ra,t0,t1
+80000028:	00a28093          	addi	ra,t0,10
+8000002c:	00000093          	li	ra,0
+80000030:	406280b3          	sub	ra,t0,t1
+80000034:	fff28093          	addi	ra,t0,-1
+80000038:	00000093          	li	ra,0
+8000003c:	0062e0b3          	or	ra,t0,t1
+80000040:	0062f0b3          	and	ra,t0,t1
+80000044:	006290b3          	sll	ra,t0,t1
+80000048:	00329093          	slli	ra,t0,0x3
+8000004c:	4062d0b3          	sra	ra,t0,t1
+80000050:	4012d093          	srai	ra,t0,0x1
+80000054:	0062a0b3          	slt	ra,t0,t1
+80000058:	00a2a093          	slti	ra,t0,10
+
+Disassembly of section .riscv.attributes:
+
+00000000 <.riscv.attributes>:
+   0:	1e41                	addi	t3,t3,-16
+   2:	0000                	unimp
+   4:	7200                	flw	fs0,32(a2)
+   6:	7369                	lui	t1,0xffffa
+   8:	01007663          	bgeu	zero,a6,14 <_start-0x7fffffec>
+   c:	0014                	0x14
+   e:	0000                	unimp
+  10:	7205                	lui	tp,0xfffe1
+  12:	3376                	fld	ft6,376(sp)
+  14:	6932                	flw	fs2,12(sp)
+  16:	7032                	flw	ft0,44(sp)
+  18:	5f30                	lw	a2,120(a4)
+  1a:	326d                	jal	fffff9c4 <_end+0x7fffe9c4>
+  1c:	3070                	fld	fa2,224(s0)
+	...

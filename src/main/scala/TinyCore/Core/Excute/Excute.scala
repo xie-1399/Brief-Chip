@@ -85,13 +85,13 @@ class Excute extends PrefixComponent{
   }
 
   /* the lsu unit should be consider */
-
   val lsu = new Area{
     /* block lsu with one cycle latency */
     val memoryOp = io.opcode.illegal && io.excuteInPipe.valid && io.opcode.memoryOption =/= MemoryOp.NOT
     val readIt = RegInit(False).setWhen(io.opcode.illegal && io.excuteInPipe.valid && (io.opcode.memoryOption === MemoryOp.LOAD || io.opcode.memoryOption === MemoryOp.LOAD_U))
     val writeIt = RegInit(False).setWhen(io.opcode.illegal && io.excuteInPipe.valid && io.opcode.memoryOption === MemoryOp.STORE) /* fetch the memory happens */
     val mask = RegNextWhen(io.opcode.mask,memoryOp).init(Mask.WORD)
+    val writeReg = RegNextWhen(io.regs.reg_waddr,memoryOp).init(0)
     val address = RegNextWhen(alu.aluPlugin.io.res.asUInt,memoryOp).init(0)
     val writeData = Reg(Bits(Xlen bits)).init(0)
     writeData := mask.mux(
@@ -123,26 +123,26 @@ class Excute extends PrefixComponent{
   }
 
   val csr = new Area{
-
+    val isCsr = io.excuteInPipe.valid && io.opcode.illegal && io.opcode.csr =/= CSR.N /* show about the csr value */
   }
 
   val jump = new Area{
 
   }
 
-
-  /* Todo with It */
   val writeBack = new Area{
     /* control the write Back unit */
     val lsuWriteBack = RegInit(False)
     val lsuWriteIt = lsu.splitIt.io.dBus.read.rsp.fire || lsu.splitIt.io.peripheralBus.rsp.fire
     lsuWriteBack.setWhen(lsu.memoryOp)
     lsuWriteBack.clearWhen(lsu.splitIt.io.dBus.read.rsp.fire || lsu.splitIt.io.peripheralBus.rsp.fire)
-
     /* think about it*/
-//    io.rfwrite.we := Mux(lsuWriteBack || lsu.memoryOp,lsuWriteBack,io.regs.reg_we)
-//    io.rfwrite.waddr := io.regs.reg_waddr
-//    io.rfwrite.wdata := Mux(!lsu.memoryOp,Mux(ismuldiv,muldiv.muldivPlugin.io.res,alu.aluPlugin.io.res))
+    val memory = lsuWriteBack || lsu.memoryOp
+    val rsp = Mux(lsu.splitIt.io.dBus.read.rsp.fire,lsu.splitIt.io.dBus.read.rsp.data,lsu.splitIt.io.peripheralBus.rsp.data)
+
+    io.rfwrite.we := Mux(memory,lsuWriteIt,io.regs.reg_we)
+    io.rfwrite.waddr := Mux(memory,lsu.writeReg,io.regs.reg_waddr)
+    io.rfwrite.wdata := Mux(memory,rsp,Mux(ismuldiv,muldiv.muldivPlugin.io.res,alu.aluPlugin.io.res))
   }
 }
 

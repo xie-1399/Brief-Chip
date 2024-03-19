@@ -16,7 +16,6 @@ import spinal.lib.bus.amba3.apb._
 import spinal.lib.bus.amba3.apb.sim.Apb3Driver
 
 import scala.math.pow
-
 class Apb3Rom(addrWidth:Int = 32,dataWidth:Int = 32) extends PrefixComponent{
   import TinyCore.Core.Constant.Parameters._
   val io = new Bundle {
@@ -45,7 +44,7 @@ object Apb3Rom extends App{
     dut =>
       dut.clockDomain.forkStimulus(10)
       val driver = Apb3Driver(dut.io.apb,dut.clockDomain)
-      val getValue = BinFile2BigInt("ext/codes/Arithmetic.bin",dut.rom.wordType.getBitsWidth,count = 1024)
+      val getValue = BinFile2BigInt("ext/codes/Arithmetic/Arithmetic.bin",dut.rom.wordType.getBitsWidth,count = 1024)
       for(idx <- 0 until dut.rom.wordCount){
         setBigInt(dut.rom,idx.toLong,getValue(idx))
         assert(driver.read(idx).toLong.toHexString == getValue(idx).toLong.toHexString)

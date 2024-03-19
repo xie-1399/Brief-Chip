@@ -3,6 +3,7 @@ package TinyCore.Core.Constant
 import spinal.core._
 import spinal.lib.bus.amba4.axi._
 import TinyCore.Core.Decode._
+import spinal.lib.bus.amba3.apb.Apb3Config
 /* =======================================================
  * Author : xie-1399
  * language: SpinalHDL v1.9.4
@@ -174,6 +175,8 @@ object Parameters{
   val kernelAxi4Config = Axi4Config(addressWidth = MemAddrBus, dataWidth = MemBus, idWidth = 5, useRegion = false,
     useBurst = false, useLock = false, useCache = false, useSize = true, useQos = false, useLen = false, useLast = true, useResp = true,
     useProt = false, useStrb = true)
+
+  val kernelApb3Config = Apb3Config(addressWidth = MemAddrBus, dataWidth = MemBus)
 
   /* Peripheral Config */
   def RomSize = 4 KiB
