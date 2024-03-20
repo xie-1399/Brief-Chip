@@ -8,6 +8,7 @@ import TinyCore.Core.Constant.Parameters._
 import TinyCore.Core.Constant.Defines._
 import TinyCore.Core.Decode._
 import TinyCore.Core.Pipeline.pipeSignals
+import spinal.core
 import spinal.core.sim._
 import spinal.lib.bus.amba3.apb.Apb3
 import spinal.lib.bus.amba4.axi.Axi4
@@ -121,6 +122,7 @@ class Excute extends PrefixComponent{
     io.axiBus << splitIt.io.dBus.toAxi4()
     io.ioBus << splitIt.io.peripheralBus.toApb3()
   }
+
 
   val csr = new Area{
     val isCsr = io.excuteInPipe.valid && io.opcode.illegal && io.opcode.csr =/= CSR.N /* show about the csr value */

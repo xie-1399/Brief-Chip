@@ -28,6 +28,10 @@ Disassembly of section .text:
 80000050:	4012d093          	srai	ra,t0,0x1
 80000054:	0062a0b3          	slt	ra,t0,t1
 80000058:	00a2a093          	slti	ra,t0,10
+8000005c:	000010b7          	lui	ra,0x1
+80000060:	000020b7          	lui	ra,0x2
+80000064:	00001097          	auipc	ra,0x1
+80000068:	00002097          	auipc	ra,0x2
 
 Disassembly of section .riscv.attributes:
 
