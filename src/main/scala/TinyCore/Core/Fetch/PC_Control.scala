@@ -33,7 +33,7 @@ class PC_Control extends PrefixComponent{
 
   when(io.jtagReset){
     PC := CPUReset
-  }.elsewhen(io.jump === JumpEnable){
+  }.elsewhen(io.jump){
     PC := io.jumpAddr
   }.elsewhen(io.hold >= Hold_PC){
     PC := PC

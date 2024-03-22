@@ -14,7 +14,8 @@ import TinyCore.Core.Constant.Defines._
 
 class Ctrl extends PrefixComponent{
 
-  /* control the hold signals*/
+  /* control the hold signals */
+  /* show which stage error and send it into the csr running error check */
 
   val io = new Bundle{
     val stageError = in UInt(log2Up(stageNum) bits) /* exception capture */

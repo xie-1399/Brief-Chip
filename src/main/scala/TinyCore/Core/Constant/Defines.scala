@@ -20,43 +20,24 @@ object Defines{
   def IoRange = U(1,4 bits)
   def MemoryRange = U(8,4 bits)
   def Xlen = 32
-  def JumpEnable: Bool = True
-  def JumpDisable: Bool = False
   def stageNum = 3
 
   /* hold the pipeline defines */
-  def HoldEnable: Bool = True
-  def HoldDisable: Bool = False
-  def HoldWidth = 3
-  def Hold_None: UInt = U(0, HoldWidth bits)
+  def HoldWidth = 2
   def Hold_PC: UInt = U(1, HoldWidth bits)
   def Hold_Fetch: UInt = U(2, HoldWidth bits)
   def Hold_Decode: UInt = U(3, HoldWidth bits)
-
   /* about Bus */
   def InstBusDataWidth = 32
   def InstBusAddrWidth = 32
+  def CsrAddrWidth = 12
   def MemBus = 32
   def MemAddrBus = 32
   def MemBusMask = 4
-  def MasterNum = 4
-  def SlaveNum = 5
-  def slave_0 = U(0,4 bits)
-  def slave_1 = U(1,4 bits)
-  def slave_2 = U(2,4 bits)
-  def slave_3 = U(3,4 bits)
-  def slave_4 = U(4,4 bits)
-
-
-  /* some constant value */
-  def ZeroWord: Bits = B(0, InstBusDataWidth bits)
 
   /* common regs */
-  def RegAddrBus = 4 downto 0
-  def RegBus = 31 downto 0
-  def DoubleRegBus =  63 downto 0
   def RegWidth = 32
-  def RegNum = 32        // reg num
+  def RegNum = 32
   def RegNumLog2 = 5
 }
 
@@ -64,10 +45,6 @@ object Instruction{
   /* the instruction format can be listed at the material */
 
   def INST_NOP: Bits = B(1, 7 bits) /* not do anything */
-
-  /* define the default inst */
-  def INST_DEFAULT:Bits = B(1,32 bits)
-  def INST_DEFAULT_OP:Bits = B(1, 7 bits)
 
   // I type inst
   def INST_TYPE_I = B(19,7 bits) //7'b0010011
@@ -164,7 +141,6 @@ object Parameters{
   def fetchAxi4Config = Axi4Config(addressWidth = InstBusAddrWidth, dataWidth = InstBusDataWidth, idWidth = 4, useRegion = false,
     useBurst = false, useLock = false, useCache = false, useSize = true, useQos = false, useLen = false, useLast = true, useResp = true,
     useProt = false, useStrb = false)
-
 
   def decodeConfig = decodeParameters()  /* with Csr and IM instruction */
 

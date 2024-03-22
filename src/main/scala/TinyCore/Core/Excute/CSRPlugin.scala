@@ -5,6 +5,7 @@ import spinal.core._
 import TinyCore.Core.Constant._
 import Defines._
 import Instruction._
+import spinal.lib._
 /* =======================================================
  * Author : xie-1399
  * language: SpinalHDL v1.9.4
@@ -13,19 +14,32 @@ import Instruction._
  * =======================================================
  */
 
+case class CsrSignals() extends Bundle with IMasterSlave {
+
+  val csr_we = Bool()
+  val csr_waddr = in UInt()
+
+  override def asMaster(): Unit = {
+
+  }
+
+
+}
+
 class CSRPlugin extends PrefixComponent{
 
   val io = new Bundle{
     /* the excute stage read and write the CSR*/
     val csr_we = in Bool()
     val csr_raddr = in UInt(MemAddrBus bits)
-    val csr_waddr = in UInt(MemAddrBus bits)
+    val  = in UInt(MemAddrBus bits)
     val csr_wdata = in Bits(MemBus bits)
     val csr_rdata = out Bits(MemBus bits)
 
     val TimeInterrupt = in Bool()
     val SoftwareInterrupt = in Bool()
     val ExternalInterrupt = in Bool()
+    val Exception = in Bool()
   }
 
   /* declare the csr regs here */

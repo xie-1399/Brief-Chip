@@ -29,12 +29,21 @@ case class rib(addrWidth:Int = 32,dataWidth:Int = 32) extends Bundle with IMaste
   }
 }
 
+object RIBConfig{
+  def MasterNum = 4
+  def SlaveNum = 5
+  def slave_0 = U(0, 4 bits)
+  def slave_1 = U(1, 4 bits)
+  def slave_2 = U(2, 4 bits)
+  def slave_3 = U(3, 4 bits)
+  def slave_4 = U(4, 4 bits)
+}
+
 /* all the combine logic (seems not good ) */
 class RIB() extends PrefixComponent{
   /* 4 masters send to the 5 slaves works*/
-
   import TinyCore.Core.Constant.Defines._
-
+  import RIBConfig._
   val io = new Bundle{
     val masters = Vec(slave(rib(MemAddrBus,MemBus)),MasterNum)
     val sels = in Vec(Bool(),MasterNum)  /* which device is using the bus */
