@@ -53,7 +53,7 @@ _start:
     sb x2,0(x1)   # write 0x80001020 with 0x05
 
     # lw/lh/lb It to check
-    li x4,0
+    li x4,0       # x4 == 0
     lui x1, %hi(0x80001000)
     li  x2, %lo(0x80001000)
     add x1,x1,x2
@@ -90,3 +90,15 @@ _start:
     nop
     nop
     nop
+
+    lui x1, %hi(0x10000020)
+    li  x2, %lo(0x10000020)
+    add x1,x1,x2
+    li x4,0x10
+    sw x4,0(x1)   # write the 0x10000020 with 0x10
+
+    lui x1, %hi(0x10000020)
+    li  x2, %lo(0x10000020)
+    add x1,x1,x2
+    li x4,0x20
+    sw x4,0(x1)   # write the 0x10000020 with 0x10

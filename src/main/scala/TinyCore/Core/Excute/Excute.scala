@@ -114,7 +114,7 @@ class Excute extends PrefixComponent{
     val OnMemory = RegInit(False).setWhen(memoryOp).clearWhen(splitIt.io.dBus.read.rsp.fire || splitIt.io.dBus.write.rsp.fire || splitIt.io.peripheralBus.rsp.fire)
     when(memoryOp || OnMemory){
       hold := Hold_Decode /* hold all unit */
-    }.elsewhen(splitIt.io.dBus.read.rsp.fire || splitIt.io.dBus.write.rsp.fire || splitIt.io.peripheralBus.rsp.valid){
+    }.elsewhen(splitIt.io.dBus.read.rsp.fire || splitIt.io.dBus.write.rsp.fire || splitIt.io.peripheralBus.cmd.fire){
       hold := 0 /* release it */
     }.otherwise{
       hold := 0

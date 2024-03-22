@@ -50,7 +50,6 @@ class KernelUsage extends AnyFunSuite {
     }
   }
 
-  /* wrong with the memory fetch happensInst happens */
   test("lsu test"){
     /* write the memory and read the memory with mask on*/
     SIMCFG().compile {
@@ -62,30 +61,18 @@ class KernelUsage extends AnyFunSuite {
       dut =>
         SimTimeout(10 ns)
         KernelInit(dut,"ext/codes/Memory/Memory.bin")
-        def passSymbol = "80000110"
+        def passSymbol = "80000138"
         val lastStagePC = dut.core.whiteBox.lastStagePC
+        val traces = readFile("src/test/scala/TinyCore/Trace/Memory").toArray
         var index = 0
         dut.systemClockDomain.onSamplings {
-          if (dut.core.regfile.io.write.we.toBoolean && dut.core.regfile.io.write.waddr.toBigInt == 1) {
-            // assert(traces(index) == dut.core.regfile.io.write.wdata.toBigInt.toString())
-            // Todo tested for reading
+          dut.io.apb.PREADY #= true
+          if (dut.core.regfile.io.write.we.toBoolean && dut.core.regfile.io.write.waddr.toBigInt == 4) {
+            assert(traces(index) == dut.core.regfile.io.write.wdata.toBigInt.toString())
             index += 1
           }
           PASS(lastStagePC.toLong.toHexString,passSymbol)
         }
-    }
-  }
-
-  test("peripheral test") {
-    /* write the memory and read the memory with mask on*/
-    SIMCFG().compile {
-      val dut = new Kernel()
-      dut.core.regfile.regfile.simPublic()
-      dut.core.regfile.io.simPublic()
-      dut
-    }.doSimUntilVoid {
-      dut =>
-        SimTimeout(10 ns)
     }
   }
 
