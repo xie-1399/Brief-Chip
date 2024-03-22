@@ -94,11 +94,11 @@ _start:
     lui x1, %hi(0x10000020)
     li  x2, %lo(0x10000020)
     add x1,x1,x2
-    li x4,0x10
-    sw x4,0(x1)   # write the 0x10000020 with 0x10
+    li x5,0x10
+    sw x5,0(x1)   # write the 0x10000020 with 0x10
 
     lui x1, %hi(0x10000020)
     li  x2, %lo(0x10000020)
     add x1,x1,x2
-    li x4,0x20
-    sw x4,0(x1)   # write the 0x10000020 with 0x10
+    li x5,0x20
+    sw x5,0(x1)   # write the 0x10000020 with 0x10
