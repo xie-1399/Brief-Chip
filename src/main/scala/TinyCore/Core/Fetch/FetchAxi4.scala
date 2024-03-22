@@ -97,7 +97,7 @@ class FetchAxi4 extends PrefixComponent{
   fetchModule.io.hold := io.hold
   fetchModule.io.fetchInPipe.inst := fetchBus.rsp.payload.data
   fetchModule.io.fetchInPipe.pc := fetchBus.rsp.payload.address
-  fetchModule.io.fetchInPipe.valid := fetchBus.rsp.fire
+  fetchModule.io.fetchInPipe.valid := Mux(io.hold >= Hold_Fetch,False,fetchBus.rsp.fire)
   io.fetchOutPipe <> fetchModule.io.fetchOutPipe
   io.axiBus << fetchBus.toAxi4()
 }

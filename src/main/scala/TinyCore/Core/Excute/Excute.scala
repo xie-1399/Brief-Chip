@@ -67,7 +67,8 @@ class Excute extends PrefixComponent{
   )
 
   val ismuldiv = isMulDiv(io.opcode)
-  val hold = Reg(UInt(HoldWidth bits)).init(0)
+  val hold = UInt(HoldWidth bits)
+
   val alu = new Area{
     /* deal with the alu options */
     val aluPlugin = new ALUPlugin()
@@ -92,14 +93,15 @@ class Excute extends PrefixComponent{
     val readIt = RegInit(False).setWhen(io.opcode.illegal && io.excuteInPipe.valid && (io.opcode.memoryOption === MemoryOp.LOAD || io.opcode.memoryOption === MemoryOp.LOAD_U))
     val writeIt = RegInit(False).setWhen(io.opcode.illegal && io.excuteInPipe.valid && io.opcode.memoryOption === MemoryOp.STORE) /* fetch the memory happens */
     val mask = RegNextWhen(io.opcode.mask,memoryOp).init(Mask.WORD)
+    val extend = RegNextWhen(io.opcode.memoryOption,memoryOp).init(MemoryOp.NOT)
     val writeReg = RegNextWhen(io.regs.reg_waddr,memoryOp).init(0)
     val address = RegNextWhen(alu.aluPlugin.io.res.asUInt,memoryOp).init(0)
-    val writeData = Reg(Bits(Xlen bits)).init(0)
-    writeData := mask.mux(
-      Mask.WORD -> op2,
-      Mask.HALF -> op2(15 downto 0).resized,
-      Mask.BYTE -> op2(7 downto 0).resized
+    val writeValue = io.opcode.mask.mux(
+      Mask.WORD -> io.regs.reg2_rdata_o,
+      Mask.HALF -> io.regs.reg2_rdata_o(15 downto 0).resized,
+      Mask.BYTE -> io.regs.reg2_rdata_o(7 downto 0).resized
     )
+    val writeData = RegNextWhen(writeValue,memoryOp).init(0)
     val memoryCmd = MemoryCmd()
     memoryCmd.valid := readIt || writeIt
     memoryCmd.mask := mask.asBits
@@ -109,11 +111,13 @@ class Excute extends PrefixComponent{
 
     val splitIt = SplitBus()
     splitIt.io.memoryCmd <> memoryCmd
-
-    when(memoryOp){
+    val OnMemory = RegInit(False).setWhen(memoryOp).clearWhen(splitIt.io.dBus.read.rsp.fire || splitIt.io.dBus.write.rsp.fire || splitIt.io.peripheralBus.rsp.fire)
+    when(memoryOp || OnMemory){
       hold := Hold_Decode /* hold all unit */
     }.elsewhen(splitIt.io.dBus.read.rsp.fire || splitIt.io.dBus.write.rsp.fire || splitIt.io.peripheralBus.rsp.valid){
       hold := 0 /* release it */
+    }.otherwise{
+      hold := 0
     }
     io.holdEx := hold
     writeIt.clearWhen(splitIt.io.dBus.write.cmd.fire || splitIt.io.peripheralBus.cmd.fire)
@@ -134,13 +138,22 @@ class Excute extends PrefixComponent{
 
   val writeBack = new Area{
     /* control the write Back unit */
-    val lsuWriteBack = RegInit(False)
+    val lsuWriteBack = lsu.OnMemory
     val lsuWriteIt = lsu.splitIt.io.dBus.read.rsp.fire || lsu.splitIt.io.peripheralBus.rsp.fire
-    lsuWriteBack.setWhen(lsu.memoryOp)
-    lsuWriteBack.clearWhen(lsu.splitIt.io.dBus.read.rsp.fire || lsu.splitIt.io.peripheralBus.rsp.fire)
     /* think about it*/
     val memory = lsuWriteBack || lsu.memoryOp
-    val rsp = Mux(lsu.splitIt.io.dBus.read.rsp.fire,lsu.splitIt.io.dBus.read.rsp.data,lsu.splitIt.io.peripheralBus.rsp.data)
+    val Unsigned = lsu.extend === MemoryOp.LOAD_U
+    val dbusRsp = lsu.mask.mux(
+      Mask.WORD -> lsu.splitIt.io.dBus.read.rsp.data,
+      Mask.HALF -> Mux(Unsigned,lsu.splitIt.io.dBus.read.rsp.data(15 downto 0).resize(Xlen),Repeat(lsu.splitIt.io.dBus.read.rsp.data.msb,16) ## lsu.splitIt.io.dBus.read.rsp.data(15 downto 0)),
+      Mask.BYTE -> Mux(Unsigned,lsu.splitIt.io.dBus.read.rsp.data(7 downto 0).resize(Xlen),Repeat(lsu.splitIt.io.dBus.read.rsp.data.msb,24) ## lsu.splitIt.io.dBus.read.rsp.data(7 downto 0))
+    )
+    val peripheralRsp = lsu.mask.mux(
+      Mask.WORD -> lsu.splitIt.io.peripheralBus.rsp.data,
+      Mask.HALF -> Mux(Unsigned,lsu.splitIt.io.peripheralBus.rsp.data(15 downto 0).resize(Xlen),Repeat(lsu.splitIt.io.peripheralBus.rsp.data.msb,16) ## lsu.splitIt.io.peripheralBus.rsp.data(15 downto 0)),
+      Mask.BYTE -> Mux(Unsigned,lsu.splitIt.io.peripheralBus.rsp.data(7 downto 0).resize(Xlen),Repeat(lsu.splitIt.io.peripheralBus.rsp.data.msb,24) ## lsu.splitIt.io.peripheralBus.rsp.data(7 downto 0))
+    )
+    val rsp = Mux(lsu.splitIt.io.dBus.read.rsp.fire,dbusRsp,peripheralRsp)
 
     io.rfwrite.we := Mux(memory,lsuWriteIt,io.regs.reg_we)
     io.rfwrite.waddr := Mux(memory,lsu.writeReg,io.regs.reg_waddr)

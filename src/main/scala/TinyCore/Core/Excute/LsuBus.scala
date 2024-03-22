@@ -142,7 +142,7 @@ case class DataMemBus() extends Bundle with IMasterSlave{
     write.cmd.ready := axi.aw.ready
 
     //axi.w.ready := True
-    val wValid = RegNext(axi.aw.fire).init(False)
+    val wValid = RegInit(False).setWhen(axi.aw.fire).clearWhen(axi.w.fire)
     axi.w.valid := wValid
     axi.w.strb := write.cmd.mask
     axi.w.data := write.cmd.data
@@ -169,12 +169,10 @@ case class SplitBus() extends PrefixComponent{
     cmdFork.foreach(_.init())
     val selPeripheral = io.memoryCmd.address(31 downto 28) === IoRange
     val seldBus = io.memoryCmd.address(31 downto 28) >= MemoryRange
-    when(io.memoryCmd.valid){
-      when(seldBus){
-        cmdFork(0) <> io.memoryCmd
-      }.elsewhen(selPeripheral){
-        cmdFork(1) <> io.memoryCmd
-      }
+    when(seldBus){
+      cmdFork(0) <> io.memoryCmd
+    }.elsewhen(selPeripheral){
+      cmdFork(1) <> io.memoryCmd
     }
     io.dBus.read.cmd.valid := cmdFork(0).valid && !cmdFork(0).write
     io.dBus.read.cmd.payload.address := cmdFork(0).address
