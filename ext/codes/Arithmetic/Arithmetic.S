@@ -35,3 +35,8 @@ _start:
     slt x1,x5,x6   # x1 = 0
     slti x1,x5,10  # x1 = 1
 
+    # U type also work
+    lui x1,0x1     # x1 = 4096
+    lui x1,0x2     # x1 = 8192
+    auipc x1,0x1   # x1 = pc + 4096
+    auipc x1,0x2   # x1 = pc + 8192

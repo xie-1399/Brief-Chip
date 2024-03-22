@@ -32,6 +32,7 @@ class ALUPlugin extends PrefixComponent{
     SLL -> (io.op1 |<< shiftOp), /* logic shift */
     SRL -> (io.op1 |>> shiftOp),
     SRA -> (io.op1.asSInt >> shiftOp).asBits, /* the arithmetic shift using */
+    COPY -> io.op2, /* copy is for the operation 2 */
     default -> io.op1
   )
   val lessU = io.alu === SLTU
