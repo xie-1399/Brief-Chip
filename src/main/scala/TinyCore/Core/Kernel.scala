@@ -73,7 +73,7 @@ class Kernel extends PrefixComponent{
     axiCrossBar.addSlaves(io.axi4 -> (0x80000000l, 2 GiB))
     axiCrossBar.addConnections(
       fetchAxi4.io.axiBus -> List(io.axi4),
-      excute.io.axiBus -> List(io.axi4)
+      excute.io.dBus.toAxi4() -> List(io.axi4)
     )
     /* add pipeline later */
     axiCrossBar.addPipelining(io.axi4)((readCrossbar, highspeedBus) => {
@@ -85,7 +85,7 @@ class Kernel extends PrefixComponent{
       writeCrossbar.writeRsp << highspeedBus.writeRsp
     })
     axiCrossBar.build()
-    excute.io.ioBus >> io.apb
+    excute.io.peripheralBus.toApb3() >> io.apb
 
     val whiteBox = new Area {
       /* for the debug use get the last stage pc */

@@ -29,8 +29,8 @@ class Excute extends PrefixComponent{
     /* write the regs */
     val rfwrite = master(rfWrite())
     val holdEx = out UInt(HoldWidth bits)
-    val axiBus = master(Axi4(memoryAxi4Config))
-    val ioBus = master(Apb3(MemAddrBus,MemBus))
+    val dBus = master(DataMemBus())
+    val peripheralBus = master(LsuPeripheralBus())
   }
 
   def isMulDiv(ctrl: CtrlSignals): Bool = {
@@ -111,20 +111,19 @@ class Excute extends PrefixComponent{
 
     val splitIt = SplitBus()
     splitIt.io.memoryCmd <> memoryCmd
-    val OnMemory = RegInit(False).setWhen(memoryOp).clearWhen(splitIt.io.dBus.read.rsp.fire || splitIt.io.dBus.write.rsp.fire || splitIt.io.peripheralBus.rsp.fire)
+    val OnMemory = RegInit(False).setWhen(memoryOp).clearWhen(splitIt.io.dBus.read.rsp.fire || splitIt.io.dBus.write.rsp.fire || splitIt.io.peripheralBus.cmd.fire)
+
     when(memoryOp || OnMemory){
       hold := Hold_Decode /* hold all unit */
-    }.elsewhen(splitIt.io.dBus.read.rsp.fire || splitIt.io.dBus.write.rsp.fire || splitIt.io.peripheralBus.cmd.fire){
-      hold := 0 /* release it */
     }.otherwise{
-      hold := 0
+      hold := 0 /* release it */
     }
     io.holdEx := hold
     writeIt.clearWhen(splitIt.io.dBus.write.cmd.fire || splitIt.io.peripheralBus.cmd.fire)
     readIt.clearWhen(splitIt.io.dBus.read.cmd.fire || splitIt.io.peripheralBus.cmd.fire)
 
-    io.axiBus << splitIt.io.dBus.toAxi4()
-    io.ioBus << splitIt.io.peripheralBus.toApb3()
+    io.dBus <> splitIt.io.dBus
+    io.peripheralBus <> splitIt.io.peripheralBus
   }
 
 

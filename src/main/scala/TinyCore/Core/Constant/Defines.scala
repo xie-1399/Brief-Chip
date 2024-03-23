@@ -31,6 +31,7 @@ object Defines{
   def InstBusDataWidth = 32
   def InstBusAddrWidth = 32
   def CsrAddrWidth = 12
+  def CsrMemWidth = 32
   def MemBus = 32
   def MemAddrBus = 32
   def MemBusMask = 4
