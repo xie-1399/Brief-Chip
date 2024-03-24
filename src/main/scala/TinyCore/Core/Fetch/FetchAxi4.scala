@@ -8,6 +8,7 @@ import TinyCore.Core.Constant._
 import Defines._
 import Instruction._
 import TinyCore.Core.Constant.Parameters.fetchAxi4Config
+import TinyCore.Core.Excute.JumpOp
 import TinyCore.Core.Pipeline.pipeSignals
 /* =======================================================
  * Author : xie-1399
@@ -56,17 +57,16 @@ case class FetchL1Bus() extends Bundle with IMasterSlave{
 
 }
 
-
 class FetchAxi4 extends PrefixComponent{
 
   //ready for the hold at all time
   val io = new Bundle{
     val jtagReset = in Bool()
-    val jump = in Bool()
-    val jumpAddr = in UInt (InstBusAddrWidth bits)
+    val jumpOp = slave(JumpOp())
     val hold = in UInt (HoldWidth bits)
-
-    val axiBus = master (Axi4ReadOnly(fetchAxi4Config))
+    val flush = in Bool()
+    val error = out Bool()
+    val iBus = master (FetchL1Bus())
     val fetchOutPipe = master(pipeSignals())
   }
 
@@ -75,8 +75,7 @@ class FetchAxi4 extends PrefixComponent{
   val holdIt = Mux(fetchHold > io.hold,fetchHold,io.hold)
   /* connect the PC module */
   pcModule.io.hold := holdIt
-  pcModule.io.jumpAddr := io.jumpAddr
-  pcModule.io.jump := io.jump
+  pcModule.io.jumpOp <> io.jumpOp
   pcModule.io.jtagReset := io.jtagReset
 
   /* send the bus request out */
@@ -88,6 +87,7 @@ class FetchAxi4 extends PrefixComponent{
     fetchHold := 0  /* release */
   }
 
+  val throwIt = RegInit(False).setWhen(io.flush).clearWhen(fetchBus.rsp.fire)
   fetchBus.cmd.address := pcModule.io.pcOut.payload
   fetchBus.cmd.valid := pcModule.io.pcOut.valid
   pcModule.io.pcOut.ready := fetchBus.cmd.ready
@@ -97,8 +97,10 @@ class FetchAxi4 extends PrefixComponent{
   fetchModule.io.hold := io.hold
   fetchModule.io.fetchInPipe.inst := fetchBus.rsp.payload.data
   fetchModule.io.fetchInPipe.pc := fetchBus.rsp.payload.address
-  fetchModule.io.fetchInPipe.valid := Mux(io.hold >= Hold_Fetch,False,fetchBus.rsp.fire)
+  fetchModule.io.fetchInPipe.valid := Mux(io.hold >= Hold_Fetch,False,fetchBus.rsp.fire) && !throwIt
   io.fetchOutPipe <> fetchModule.io.fetchOutPipe
-  io.axiBus << fetchBus.toAxi4()
+  io.iBus <> fetchBus
+
+  io.error := fetchBus.rsp.error
 }
 

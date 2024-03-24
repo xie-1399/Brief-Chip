@@ -35,6 +35,8 @@ class ALUPlugin extends PrefixComponent{
     COPY -> io.op2, /* copy is for the operation 2 */
     default -> io.op1
   )
+
+
   val lessU = io.alu === SLTU
   val less = Mux(lessU,io.op1.asUInt < io.op2.asUInt,io.op1.asSInt < io.op2.asSInt)
 

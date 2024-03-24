@@ -4,6 +4,7 @@ import Common.SpinalTools.PrefixComponent
 import spinal.core._
 import TinyCore.Core.Constant._
 import Defines._
+import TinyCore.Core.Excute.JumpOp
 import spinal.lib._
 /* =======================================================
  * Author : xie-1399
@@ -18,8 +19,7 @@ class PC_Control extends PrefixComponent{
 
   val io = new Bundle{
     val jtagReset = in Bool()
-    val jump = in Bool()
-    val jumpAddr = in UInt(InstBusAddrWidth bits)
+    val jumpOp = slave(JumpOp())
     val hold = in UInt(HoldWidth bits)
     val pcOut = master Stream(out UInt(InstBusAddrWidth bits))
   }
@@ -33,8 +33,8 @@ class PC_Control extends PrefixComponent{
 
   when(io.jtagReset){
     PC := CPUReset
-  }.elsewhen(io.jump){
-    PC := io.jumpAddr
+  }.elsewhen(io.jumpOp.jump){
+    PC := io.jumpOp.jumpAddr
   }.elsewhen(io.hold >= Hold_PC){
     PC := PC
     fetchValid.clear()

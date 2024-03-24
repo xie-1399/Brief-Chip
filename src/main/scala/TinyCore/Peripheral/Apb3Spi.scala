@@ -13,9 +13,8 @@ import Common.SpinalTools.PrefixComponent
 import spinal.core._
 import spinal.lib._
 
-
 /* here is the spi master module */
-class spi(addrWidth:Int = 32,dataWidth:Int = 32) extends PrefixComponent {
+class Apb3Spi(addrWidth:Int = 32, dataWidth:Int = 32) extends PrefixComponent {
 
   val io = new Bundle{
     val data_i = in Bits(dataWidth bits)

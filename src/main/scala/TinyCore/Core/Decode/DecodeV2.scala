@@ -145,6 +145,7 @@ class DecodeV2(p: decodeParameters) extends PrefixComponent {
     val decodeInPipe = slave(pipeSignals())
     val decodeOutPipe = master(pipeSignals())
     val hold = in UInt (HoldWidth bits)
+    val flush = in Bool()
     val decodeSignals = out(CtrlSignals(p))
     val error = out Bool()
     val reg = master(regSignals())
@@ -331,7 +332,7 @@ class DecodeV2(p: decodeParameters) extends PrefixComponent {
       }
       is(INST_JAL) {
         reg.reg_we.set()
-        assignBundleWithList(ctrl, Seq(Y, Y, N, OP1.PC, OP2.IMM_J, Mask.WORD, BR.N, ALU.ADD, MemoryOp.NOT, CSR.N))
+        assignBundleWithList(ctrl, Seq(Y, Y, N, OP1.PC, OP2.IMM_J, Mask.WORD, BR.J, ALU.ADD, MemoryOp.NOT, CSR.N))
       }
       is(INST_JALR) {
         reg.reg_we.set()
@@ -385,13 +386,13 @@ class DecodeV2(p: decodeParameters) extends PrefixComponent {
   /* with one stage pipe out */
   val dff_decode = new Pipe_DFF(io.decodeInPipe.getBitsWidth)
   dff_decode.io.din.assignFromBits(io.decodeInPipe.asBits)
-  dff_decode.io.hold := holdDecode || error
+  dff_decode.io.hold := holdDecode || error || io.flush
   dff_decode.io.default := 0
   io.decodeOutPipe.assignFromBits(dff_decode.io.dout)
 
   val dff_decodeSignals = new Pipe_DFF(ctrl.getBitsWidth)
   dff_decodeSignals.io.din.assignFromBits(ctrl.asBits)
-  dff_decodeSignals.io.hold := holdDecode || error
+  dff_decodeSignals.io.hold := holdDecode || error || io.flush
   dff_decodeSignals.io.default := B(0, ctrl.getBitsWidth bits)
   io.decodeSignals.assignFromBits(dff_decodeSignals.io.dout)
   io.error := error
@@ -404,7 +405,7 @@ class DecodeV2(p: decodeParameters) extends PrefixComponent {
   reg.reg2_rdata_o := io.rfread.Rs2Data
   val dff_reg = new Pipe_DFF(reg.getBitsWidth)
   dff_reg.io.din.assignFromBits(reg.asBits)
-  dff_reg.io.hold := holdDecode || error
+  dff_reg.io.hold := holdDecode || error || io.flush
   dff_reg.io.default := B(0, reg.getBitsWidth bits)
   io.reg.assignFromBits(dff_reg.io.dout)
 }
