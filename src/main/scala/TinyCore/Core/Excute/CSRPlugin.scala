@@ -10,7 +10,7 @@ import spinal.lib._
  * Author : xie-1399
  * language: SpinalHDL v1.9.4
  * date 2024.3.10
- * the CSR needs to control the interrupt
+ * the CSR needs to control the interrupt（using a state machine to present all）
  * =======================================================
  */
 
@@ -36,6 +36,7 @@ class CSRPlugin extends PrefixComponent{
     val ExternalInterrupt = in Bool()
     val Exception = in Bool()
   }
+
 
   /* declare the csr regs here */
   val cycles = Reg(UInt(64 bits)).init(0)
@@ -82,6 +83,7 @@ class CSRPlugin extends PrefixComponent{
 
   val interrupt = new Area{
     /* may using a state machine control it is enough */
+
   }
 
 }

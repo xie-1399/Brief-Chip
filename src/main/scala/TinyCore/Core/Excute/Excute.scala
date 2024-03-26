@@ -33,6 +33,7 @@ class Excute extends PrefixComponent{
     val dBus = master(DataMemBus())
     val peripheralBus = master(LsuPeripheralBus())
     val jumpOp = master (JumpOp())
+    val csrSignals = master(CsrSignals())
   }
 
   def isMulDiv(ctrl: CtrlSignals): Bool = {
@@ -160,12 +161,27 @@ class Excute extends PrefixComponent{
     io.jumpOp.jumpAddr := jumpAddr
   }
 
+  // Todo Check it
   val csr = new Area{
     val isCsr = io.excuteInPipe.valid && io.opcode.illegal && io.opcode.csr =/= CSR.N /* show about the csr value */
+    val writeIt = RegNext(isCsr && io.regs.reg1_rdata_o.asUInt =/= 0).init(False)
+    val raddr = io.excuteInPipe.inst(31 downto 20).asUInt
+    val waddr = RegNext(io.excuteInPipe.inst(31 downto 20).asUInt).init(0)
+    val Imm = io.opcode.op2 === OP2.IMM_U
+    val CsrValue = io.csrSignals.csr_rdata
+    val writeData = Reg(Bits(CsrMemWidth bits)).init(0)
+    writeData := io.opcode.csr.mux(
+      CSR.W -> {Mux(Imm,op2,op1)},
+      CSR.C -> {Mux(Imm,op2 & (~CsrValue),op1 & (~CsrValue))},
+      CSR.S -> {Mux(Imm,op2 | CsrValue,op1 | CsrValue)},
+      default -> B"0".resized
+    )
+    io.csrSignals.csr_we := writeIt
+    io.csrSignals.csr_waddr := waddr
+    io.csrSignals.csr_wdata := writeData
+    io.csrSignals.csr_raddr := raddr
 
   }
-
-
 
   val writeBack = new Area{
     /* control the write Back unit */
@@ -186,14 +202,15 @@ class Excute extends PrefixComponent{
     )
     val rsp = Mux(lsu.splitIt.io.dBus.read.rsp.fire,dbusRsp,peripheralRsp)
     val arithValue = Mux(ismuldiv,muldiv.muldivPlugin.io.res,alu.aluPlugin.io.res)
-    val jumpValue = Mux(jump.J,jump.jumpRd.asBits,arithValue)
+    val csrValue = Mux(csr.isCsr,csr.CsrValue,arithValue)
+    val jumpValue = Mux(jump.J,jump.jumpRd.asBits,csrValue)
 
     io.rfwrite.we := Mux(memory,lsuWriteIt,io.regs.reg_we)
     io.rfwrite.waddr := Mux(memory,lsu.writeReg,io.regs.reg_waddr)
     io.rfwrite.wdata := Mux(memory,rsp,jumpValue)
   }
 
-  io.error := lsu.error
+  io.error := lsu.error || muldiv.muldivPlugin.io.error
 }
 
 object Excute extends App{

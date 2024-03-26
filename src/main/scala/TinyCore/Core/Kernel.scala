@@ -11,11 +11,12 @@ import TinyCore.Core.Constant.Defines._
 import TinyCore.Core.Excute._
 import spinal.lib.bus.amba3.apb._
 import spinal.lib.bus.amba4.axi._
+
 /* =======================================================
  * Author : xie-1399
  * language: SpinalHDL v1.9.4
  * date 2024.2.22
- * RISC-V 3-stages Kernel
+ * RISC-V 3-stages Kernel(no need the asyncReset in fact )
  * =======================================================
  */
 
@@ -49,6 +50,7 @@ class Kernel extends PrefixComponent{
     val decode = new DecodeV2(decodeConfig)
     val excute = new Excute()
     val ctrl = new Ctrl()
+    val csr = new CSRPlugin()
 
     /* connect the pipeline */
     fetch.io.fetchOutPipe <> decode.io.decodeInPipe
@@ -57,6 +59,7 @@ class Kernel extends PrefixComponent{
     excute.io.regs <> decode.io.reg
     decode.io.rfread <> regfile.io.read
     excute.io.rfwrite <> regfile.io.write
+    excute.io.csrSignals <> csr.io.csrSignals
     fetch.io.jumpOp <> excute.io.jumpOp
 
     /* ctrl the jump and exception */
@@ -64,6 +67,11 @@ class Kernel extends PrefixComponent{
     ctrl.io.fetchError := fetch.io.error
     ctrl.io.decodeError := decode.io.error
     ctrl.io.excuteError := excute.io.error
+    csr.io.Exception := ctrl.io.Exception
+    csr.io.TimeInterrupt := False
+    csr.io.SoftwareInterrupt := False
+    csr.io.ExternalInterrupt := False
+
     fetch.io.hold := ctrl.io.holdOut
     decode.io.hold := ctrl.io.holdOut
     fetch.io.flush := ctrl.io.flush

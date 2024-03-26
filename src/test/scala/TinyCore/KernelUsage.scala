@@ -102,7 +102,7 @@ class KernelUsage extends AnyFunSuite {
 
   test("csr") {
     /* test about the interrupt and exception also ecall and ebreak */
-    
+
   }
 
 }

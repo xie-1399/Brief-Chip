@@ -9,13 +9,13 @@ import Common.SpinalTools._
 class SimpleMulDivPlugin() extends PrefixComponent {
   import ALU._
 
-  /* Todo with the div 0 */
   val io = new Bundle {
     val valid = in Bool()
     val alu = in(ALU())
     val op1 = in Bits (Xlen bits)
     val op2 = in Bits (Xlen bits)
     val res = out Bits (Xlen bits)
+    val error = out Bool()
   }
   val low = 31 downto 0
   val high = 63 downto 32
@@ -44,7 +44,7 @@ class SimpleMulDivPlugin() extends PrefixComponent {
     REM -> (io.op1.asSInt % io.op2.asSInt).asBits,
     default -> io.op1
   )
-
+  io.error := (io.alu === DIVU || io.alu === DIV || io.alu === REMU || io.alu === REM) && io.op2 === 0
   when(io.valid) {
     io.res := result
   }.otherwise {
