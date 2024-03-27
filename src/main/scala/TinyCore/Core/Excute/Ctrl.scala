@@ -50,6 +50,7 @@ class Ctrl extends PrefixComponent{
     }.otherwise{
       stageError := 0
     }
+
   io.holdOut := io.hold_ex
   io.Exception := io.excuteError || io.decodeError || io.fetchError
   io.flush := io.jumpOp.jump

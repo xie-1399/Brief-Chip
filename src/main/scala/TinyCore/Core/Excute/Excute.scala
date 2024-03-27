@@ -161,26 +161,25 @@ class Excute extends PrefixComponent{
     io.jumpOp.jumpAddr := jumpAddr
   }
 
-  // Todo Check it
   val csr = new Area{
     val isCsr = io.excuteInPipe.valid && io.opcode.illegal && io.opcode.csr =/= CSR.N /* show about the csr value */
     val writeIt = RegNext(isCsr && io.regs.reg1_rdata_o.asUInt =/= 0).init(False)
     val raddr = io.excuteInPipe.inst(31 downto 20).asUInt
     val waddr = RegNext(io.excuteInPipe.inst(31 downto 20).asUInt).init(0)
     val Imm = io.opcode.op2 === OP2.IMM_U
+    val ImmValue = io.excuteInPipe.inst(19 downto 15)
     val CsrValue = io.csrSignals.csr_rdata
     val writeData = Reg(Bits(CsrMemWidth bits)).init(0)
     writeData := io.opcode.csr.mux(
-      CSR.W -> {Mux(Imm,op2,op1)},
-      CSR.C -> {Mux(Imm,op2 & (~CsrValue),op1 & (~CsrValue))},
-      CSR.S -> {Mux(Imm,op2 | CsrValue,op1 | CsrValue)},
+      CSR.W -> {Mux(Imm,ImmValue.resized,op1)},
+      CSR.C -> {Mux(Imm,~(ImmValue).resize(CsrMemWidth) & CsrValue,(~op1) & CsrValue)},
+      CSR.S -> {Mux(Imm,ImmValue.resized | CsrValue,op1 | CsrValue)},
       default -> B"0".resized
     )
     io.csrSignals.csr_we := writeIt
     io.csrSignals.csr_waddr := waddr
     io.csrSignals.csr_wdata := writeData
     io.csrSignals.csr_raddr := raddr
-
   }
 
   val writeBack = new Area{

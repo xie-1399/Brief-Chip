@@ -125,14 +125,32 @@ object Instruction{
   def INST_CSRRCI = B(7,3 bits) // 3'b111
 
   // some using CSR reg addr
-  def CSR_CYCLE = 0xc00
-  def CSR_CYCLEH =0xc80
-  def CSR_MTVEC = 0x305
-  def CSR_MCAUSE = 0x342
-  def CSR_MEPC = 0x341
-  def CSR_MIE = 0x304
-  def CSR_MSTATUS = 0x300
-  def CSR_MSCRATCH = 0x340
+  def MVENDORID = 0xF11 // MRO Vendor ID.
+  def MARCHID = 0xF12 // MRO Architecture ID.
+  def MIMPID = 0xF13 // MRO Implementation ID.
+  def MHARTID = 0xF14 // MRO Hardware thread ID.Machine Trap Setup
+  def MSTATUS = 0x300 // MRW Machine status register.
+  def MISA = 0x301 // MRW ISA and extensions
+  def MEDELEG = 0x302 // MRW Machine exception delegation register.
+  def MIDELEG = 0x303 // MRW Machine interrupt delegation register.
+  def MIE = 0x304 // MRW Machine interrupt-enable register.
+  def MTVEC = 0x305 // MRW Machine trap-handler base address. Machine Trap Handling
+  def MSCRATCH = 0x340 // MRW Scratch register for machine trap handlers.
+  def MEPC = 0x341 // MRW Machine exception program counter.
+  def MCAUSE = 0x342 // MRW Machine trap cause.
+  def MBADADDR = 0x343 // MRW Machine bad address.
+  def MIP = 0x344 // MRW Machine interrupt pending.
+  def MBASE = 0x380 // MRW Base register.
+  def MBOUND = 0x381 // MRW Bound register.
+  def MIBASE = 0x382 // MRW Instruction base register.
+  def MIBOUND = 0x383 // MRW Instruction bound register.
+  def MDBASE = 0x384 // MRW Data base register.
+  def MDBOUND = 0x385 // MRW Data bound register.
+  def MCYCLE = 0xB00 // MRW Machine cycle counter.
+  def MINSTRET = 0xB02 // MRW Machine instructions-retired counter.
+  def MCYCLEH = 0xB80 // MRW Upper 32 bits of mcycle, RV32I only.
+  def MINSTRETH = 0xB82 // MRW Upper 32 bits of minstret, RV32I only.
+  val MCOUNTEREN = 0x306
 }
 
 

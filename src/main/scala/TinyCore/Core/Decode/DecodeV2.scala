@@ -173,6 +173,10 @@ class DecodeV2(p: decodeParameters) extends PrefixComponent {
   reg.reg_we := False
   /* the decode valid drive it */
   when(io.decodeInPipe.valid) {
+    /* Todo other inst to add */
+    when(io.decodeInPipe.inst === INST_MRET){
+      assignBundleWithList(ctrl, Seq(Y, N, Y, OP1.NOT, OP2.NOT, Mask.WORD, BR.N, ALU.COPY, MemoryOp.NOT, CSR.N))
+    }
     switch(opcode) {
       is(INST_TYPE_I) {
         reg.reg_we.set()
