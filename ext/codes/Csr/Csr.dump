@@ -1,0 +1,40 @@
+
+Csr:     file format elf32-littleriscv
+
+
+Disassembly of section .text:
+
+80000000 <_start>:
+80000000:	00200313          	li	t1,2
+80000004:	00600293          	li	t0,6
+80000008:	30029273          	csrrw	tp,mstatus,t0
+8000000c:	30031273          	csrrw	tp,mstatus,t1
+80000010:	30045273          	csrrwi	tp,mstatus,8
+80000014:	00200093          	li	ra,2
+80000018:	3000a273          	csrrs	tp,mstatus,ra
+8000001c:	30026273          	csrrsi	tp,mstatus,4
+80000020:	00400093          	li	ra,4
+80000024:	3000b273          	csrrc	tp,mstatus,ra
+80000028:	3001f273          	csrrci	tp,mstatus,3
+8000002c:	00000013          	nop
+80000030:	00000013          	nop
+80000034:	00000013          	nop
+
+Disassembly of section .riscv.attributes:
+
+00000000 <.riscv.attributes>:
+   0:	1e41                	addi	t3,t3,-16
+   2:	0000                	unimp
+   4:	7200                	flw	fs0,32(a2)
+   6:	7369                	lui	t1,0xffffa
+   8:	01007663          	bgeu	zero,a6,14 <_start-0x7fffffec>
+   c:	0014                	0x14
+   e:	0000                	unimp
+  10:	7205                	lui	tp,0xfffe1
+  12:	3376                	fld	ft6,376(sp)
+  14:	6932                	flw	fs2,12(sp)
+  16:	7032                	flw	ft0,44(sp)
+  18:	5f30                	lw	a2,120(a4)
+  1a:	326d                	jal	fffff9c4 <_end+0x7fffe9c4>
+  1c:	3070                	fld	fa2,224(s0)
+	...

@@ -11,11 +11,12 @@ import TinyCore.Core.Constant.Defines._
 import TinyCore.Core.Excute._
 import spinal.lib.bus.amba3.apb._
 import spinal.lib.bus.amba4.axi._
+
 /* =======================================================
  * Author : xie-1399
  * language: SpinalHDL v1.9.4
  * date 2024.2.22
- * RISC-V 3-stages Kernel
+ * RISC-V 3-stages Kernel(no need the asyncReset in fact )
  * =======================================================
  */
 
@@ -45,35 +46,47 @@ class Kernel extends PrefixComponent{
   val core = new ClockingArea(systemClockDomain){
     /* connect the fetch + decode + excute + regfile*/
     val regfile = new Regfile()
-    val fetchAxi4 = new FetchAxi4()
+    val fetch = new FetchAxi4()
     val decode = new DecodeV2(decodeConfig)
     val excute = new Excute()
     val ctrl = new Ctrl()
+    val csr = new CSRPlugin()
 
     /* connect the pipeline */
-    fetchAxi4.io.fetchOutPipe <> decode.io.decodeInPipe
+    fetch.io.fetchOutPipe <> decode.io.decodeInPipe
     excute.io.excuteInPipe <> decode.io.decodeOutPipe
     excute.io.opcode <> decode.io.decodeSignals
     excute.io.regs <> decode.io.reg
     decode.io.rfread <> regfile.io.read
     excute.io.rfwrite <> regfile.io.write
+    excute.io.csrSignals <> csr.io.csrSignals
+    fetch.io.jumpOp <> excute.io.jumpOp
 
-    /* connect ctrl and jtag port */
-    regfile.io.jtagPort.init()
-    fetchAxi4.io.hold := ctrl.io.holdOut
-    fetchAxi4.io.jump := False
-    fetchAxi4.io.jumpAddr := 0
-    fetchAxi4.io.jtagReset := io.jtagReset
-    decode.io.hold := ctrl.io.holdOut
+    /* ctrl the jump and exception */
     ctrl.io.hold_ex := excute.io.holdEx
-    ctrl.io.stageId := 0
-    ctrl.io.stageError := 0
+    ctrl.io.fetchError := fetch.io.error
+    ctrl.io.decodeError := decode.io.error
+    ctrl.io.excuteError := excute.io.error
+    csr.io.Exception := ctrl.io.Exception
+    csr.io.TimeInterrupt := False
+    csr.io.SoftwareInterrupt := False
+    csr.io.ExternalInterrupt := False
+
+    fetch.io.hold := ctrl.io.holdOut
+    decode.io.hold := ctrl.io.holdOut
+    fetch.io.flush := ctrl.io.flush
+    decode.io.flush := ctrl.io.flush
+    ctrl.io.jumpOp <> excute.io.jumpOp
+
+    /* jtag port */
+    regfile.io.jtagPort.init()
+    fetch.io.jtagReset := io.jtagReset
 
     val axiCrossBar = Axi4CrossbarFactory()
     axiCrossBar.addSlaves(io.axi4 -> (0x80000000l, 2 GiB))
     axiCrossBar.addConnections(
-      fetchAxi4.io.axiBus -> List(io.axi4),
-      excute.io.axiBus -> List(io.axi4)
+      fetch.io.iBus.toAxi4() -> List(io.axi4),
+      excute.io.dBus.toAxi4() -> List(io.axi4)
     )
     /* add pipeline later */
     axiCrossBar.addPipelining(io.axi4)((readCrossbar, highspeedBus) => {
@@ -85,7 +98,7 @@ class Kernel extends PrefixComponent{
       writeCrossbar.writeRsp << highspeedBus.writeRsp
     })
     axiCrossBar.build()
-    excute.io.ioBus >> io.apb
+    excute.io.peripheralBus.toApb3() >> io.apb
 
     val whiteBox = new Area {
       /* for the debug use get the last stage pc */

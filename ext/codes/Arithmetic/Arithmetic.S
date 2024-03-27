@@ -40,3 +40,13 @@ _start:
     lui x1,0x2     # x1 = 8192
     auipc x1,0x1   # x1 = pc + 4096
     auipc x1,0x2   # x1 = pc + 8192
+
+    # hazard the bus
+    li x2,0
+    li x3,3
+    add x1,x2,x3  # x1 = 3
+    add x1,x1,x3  # x1 = 6
+    addi x1,x1,4  # x1 = 10
+    nop
+    nop
+    nop

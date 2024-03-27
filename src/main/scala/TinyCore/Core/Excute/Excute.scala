@@ -26,11 +26,14 @@ class Excute extends PrefixComponent{
     val excuteInPipe = slave(pipeSignals())
     /* from the regfile */
     val regs = slave(regSignals())
+    val error = out Bool()
     /* write the regs */
     val rfwrite = master(rfWrite())
     val holdEx = out UInt(HoldWidth bits)
-    val axiBus = master(Axi4(memoryAxi4Config))
-    val ioBus = master(Apb3(MemAddrBus,MemBus))
+    val dBus = master(DataMemBus())
+    val peripheralBus = master(LsuPeripheralBus())
+    val jumpOp = master (JumpOp())
+    val csrSignals = master(CsrSignals())
   }
 
   def isMulDiv(ctrl: CtrlSignals): Bool = {
@@ -111,29 +114,72 @@ class Excute extends PrefixComponent{
 
     val splitIt = SplitBus()
     splitIt.io.memoryCmd <> memoryCmd
-    val OnMemory = RegInit(False).setWhen(memoryOp).clearWhen(splitIt.io.dBus.read.rsp.fire || splitIt.io.dBus.write.rsp.fire || splitIt.io.peripheralBus.rsp.fire)
+    val OnMemory = RegInit(False).setWhen(memoryOp).clearWhen(splitIt.io.dBus.read.rsp.fire || splitIt.io.dBus.write.rsp.fire || splitIt.io.peripheralBus.cmd.fire)
+    val error = splitIt.io.dBus.read.rsp.error || splitIt.io.dBus.write.rsp.error || splitIt.io.peripheralBus.rsp.error
+
     when(memoryOp || OnMemory){
       hold := Hold_Decode /* hold all unit */
-    }.elsewhen(splitIt.io.dBus.read.rsp.fire || splitIt.io.dBus.write.rsp.fire || splitIt.io.peripheralBus.cmd.fire){
-      hold := 0 /* release it */
     }.otherwise{
-      hold := 0
+      hold := 0 /* release it */
     }
     io.holdEx := hold
     writeIt.clearWhen(splitIt.io.dBus.write.cmd.fire || splitIt.io.peripheralBus.cmd.fire)
     readIt.clearWhen(splitIt.io.dBus.read.cmd.fire || splitIt.io.peripheralBus.cmd.fire)
 
-    io.axiBus << splitIt.io.dBus.toAxi4()
-    io.ioBus << splitIt.io.peripheralBus.toApb3()
-  }
-
-
-  val csr = new Area{
-    val isCsr = io.excuteInPipe.valid && io.opcode.illegal && io.opcode.csr =/= CSR.N /* show about the csr value */
+    io.dBus <> splitIt.io.dBus
+    io.peripheralBus <> splitIt.io.peripheralBus
   }
 
   val jump = new Area{
+    val jumpIt = False
+    val jumpAddr = U(0,Xlen bits)
+    val jumpOp = io.opcode.illegal && io.excuteInPipe.valid && io.opcode.branch =/= BR.N
+    val J = (io.opcode.branch === BR.JR || io.opcode.branch === BR.J)
+    val Branch = jumpOp && !J
+    val jumpRd = U(0,Xlen bits)
+    val compare = new Compare(Xlen)
+    val Unsigned = io.opcode.branch === BR.GEU || io.opcode.branch === BR.LTU
+    compare.io.sign := !Unsigned
+    compare.io.src0 := io.regs.reg1_rdata_o
+    compare.io.src1 := io.regs.reg2_rdata_o
 
+    when(J && jumpOp){
+      /* Q : how to flush the pipeline as worked */
+      jumpIt.set()
+      jumpRd := io.excuteInPipe.pc + 4
+      jumpAddr := alu.aluPlugin.io.res.asUInt
+    }.elsewhen(Branch){
+      switch(io.opcode.branch){
+        is(BR.EQ){jumpIt.setWhen(compare.io.eq);jumpAddr := io.excuteInPipe.pc + op2.asUInt}
+        is(BR.NE){jumpIt.setWhen(!compare.io.eq);jumpAddr := io.excuteInPipe.pc + op2.asUInt}
+        is(BR.LT,BR.LTU){jumpIt.setWhen(compare.io.ltx);jumpAddr := io.excuteInPipe.pc + op2.asUInt}
+        is(BR.GE,BR.GEU){jumpIt.setWhen(!compare.io.ltx);jumpAddr := io.excuteInPipe.pc + op2.asUInt}
+        default{jumpIt.clear()}
+      }
+    }
+    io.jumpOp.jump := jumpIt
+    io.jumpOp.jumpAddr := jumpAddr
+  }
+
+  val csr = new Area{
+    val isCsr = io.excuteInPipe.valid && io.opcode.illegal && io.opcode.csr =/= CSR.N /* show about the csr value */
+    val writeIt = RegNext(isCsr && io.regs.reg1_rdata_o.asUInt =/= 0).init(False)
+    val raddr = io.excuteInPipe.inst(31 downto 20).asUInt
+    val waddr = RegNext(io.excuteInPipe.inst(31 downto 20).asUInt).init(0)
+    val Imm = io.opcode.op2 === OP2.IMM_U
+    val ImmValue = io.excuteInPipe.inst(19 downto 15)
+    val CsrValue = io.csrSignals.csr_rdata
+    val writeData = Reg(Bits(CsrMemWidth bits)).init(0)
+    writeData := io.opcode.csr.mux(
+      CSR.W -> {Mux(Imm,ImmValue.resized,op1)},
+      CSR.C -> {Mux(Imm,~(ImmValue).resize(CsrMemWidth) & CsrValue,(~op1) & CsrValue)},
+      CSR.S -> {Mux(Imm,ImmValue.resized | CsrValue,op1 | CsrValue)},
+      default -> B"0".resized
+    )
+    io.csrSignals.csr_we := writeIt
+    io.csrSignals.csr_waddr := waddr
+    io.csrSignals.csr_wdata := writeData
+    io.csrSignals.csr_raddr := raddr
   }
 
   val writeBack = new Area{
@@ -154,11 +200,16 @@ class Excute extends PrefixComponent{
       Mask.BYTE -> Mux(Unsigned,lsu.splitIt.io.peripheralBus.rsp.data(7 downto 0).resize(Xlen),Repeat(lsu.splitIt.io.peripheralBus.rsp.data.msb,24) ## lsu.splitIt.io.peripheralBus.rsp.data(7 downto 0))
     )
     val rsp = Mux(lsu.splitIt.io.dBus.read.rsp.fire,dbusRsp,peripheralRsp)
+    val arithValue = Mux(ismuldiv,muldiv.muldivPlugin.io.res,alu.aluPlugin.io.res)
+    val csrValue = Mux(csr.isCsr,csr.CsrValue,arithValue)
+    val jumpValue = Mux(jump.J,jump.jumpRd.asBits,csrValue)
 
     io.rfwrite.we := Mux(memory,lsuWriteIt,io.regs.reg_we)
     io.rfwrite.waddr := Mux(memory,lsu.writeReg,io.regs.reg_waddr)
-    io.rfwrite.wdata := Mux(memory,rsp,Mux(ismuldiv,muldiv.muldivPlugin.io.res,alu.aluPlugin.io.res))
+    io.rfwrite.wdata := Mux(memory,rsp,jumpValue)
   }
+
+  io.error := lsu.error || muldiv.muldivPlugin.io.error
 }
 
 object Excute extends App{

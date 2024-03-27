@@ -20,43 +20,25 @@ object Defines{
   def IoRange = U(1,4 bits)
   def MemoryRange = U(8,4 bits)
   def Xlen = 32
-  def JumpEnable: Bool = True
-  def JumpDisable: Bool = False
   def stageNum = 3
 
   /* hold the pipeline defines */
-  def HoldEnable: Bool = True
-  def HoldDisable: Bool = False
-  def HoldWidth = 3
-  def Hold_None: UInt = U(0, HoldWidth bits)
+  def HoldWidth = 2
   def Hold_PC: UInt = U(1, HoldWidth bits)
   def Hold_Fetch: UInt = U(2, HoldWidth bits)
   def Hold_Decode: UInt = U(3, HoldWidth bits)
-
   /* about Bus */
   def InstBusDataWidth = 32
   def InstBusAddrWidth = 32
+  def CsrAddrWidth = 12
+  def CsrMemWidth = 32
   def MemBus = 32
   def MemAddrBus = 32
   def MemBusMask = 4
-  def MasterNum = 4
-  def SlaveNum = 5
-  def slave_0 = U(0,4 bits)
-  def slave_1 = U(1,4 bits)
-  def slave_2 = U(2,4 bits)
-  def slave_3 = U(3,4 bits)
-  def slave_4 = U(4,4 bits)
-
-
-  /* some constant value */
-  def ZeroWord: Bits = B(0, InstBusDataWidth bits)
 
   /* common regs */
-  def RegAddrBus = 4 downto 0
-  def RegBus = 31 downto 0
-  def DoubleRegBus =  63 downto 0
   def RegWidth = 32
-  def RegNum = 32        // reg num
+  def RegNum = 32
   def RegNumLog2 = 5
 }
 
@@ -64,10 +46,6 @@ object Instruction{
   /* the instruction format can be listed at the material */
 
   def INST_NOP: Bits = B(1, 7 bits) /* not do anything */
-
-  /* define the default inst */
-  def INST_DEFAULT:Bits = B(1,32 bits)
-  def INST_DEFAULT_OP:Bits = B(1, 7 bits)
 
   // I type inst
   def INST_TYPE_I = B(19,7 bits) //7'b0010011
@@ -147,14 +125,32 @@ object Instruction{
   def INST_CSRRCI = B(7,3 bits) // 3'b111
 
   // some using CSR reg addr
-  def CSR_CYCLE = 0xc00
-  def CSR_CYCLEH =0xc80
-  def CSR_MTVEC = 0x305
-  def CSR_MCAUSE = 0x342
-  def CSR_MEPC = 0x341
-  def CSR_MIE = 0x304
-  def CSR_MSTATUS = 0x300
-  def CSR_MSCRATCH = 0x340
+  def MVENDORID = 0xF11 // MRO Vendor ID.
+  def MARCHID = 0xF12 // MRO Architecture ID.
+  def MIMPID = 0xF13 // MRO Implementation ID.
+  def MHARTID = 0xF14 // MRO Hardware thread ID.Machine Trap Setup
+  def MSTATUS = 0x300 // MRW Machine status register.
+  def MISA = 0x301 // MRW ISA and extensions
+  def MEDELEG = 0x302 // MRW Machine exception delegation register.
+  def MIDELEG = 0x303 // MRW Machine interrupt delegation register.
+  def MIE = 0x304 // MRW Machine interrupt-enable register.
+  def MTVEC = 0x305 // MRW Machine trap-handler base address. Machine Trap Handling
+  def MSCRATCH = 0x340 // MRW Scratch register for machine trap handlers.
+  def MEPC = 0x341 // MRW Machine exception program counter.
+  def MCAUSE = 0x342 // MRW Machine trap cause.
+  def MBADADDR = 0x343 // MRW Machine bad address.
+  def MIP = 0x344 // MRW Machine interrupt pending.
+  def MBASE = 0x380 // MRW Base register.
+  def MBOUND = 0x381 // MRW Bound register.
+  def MIBASE = 0x382 // MRW Instruction base register.
+  def MIBOUND = 0x383 // MRW Instruction bound register.
+  def MDBASE = 0x384 // MRW Data base register.
+  def MDBOUND = 0x385 // MRW Data bound register.
+  def MCYCLE = 0xB00 // MRW Machine cycle counter.
+  def MINSTRET = 0xB02 // MRW Machine instructions-retired counter.
+  def MCYCLEH = 0xB80 // MRW Upper 32 bits of mcycle, RV32I only.
+  def MINSTRETH = 0xB82 // MRW Upper 32 bits of minstret, RV32I only.
+  val MCOUNTEREN = 0x306
 }
 
 
@@ -164,7 +160,6 @@ object Parameters{
   def fetchAxi4Config = Axi4Config(addressWidth = InstBusAddrWidth, dataWidth = InstBusDataWidth, idWidth = 4, useRegion = false,
     useBurst = false, useLock = false, useCache = false, useSize = true, useQos = false, useLen = false, useLast = true, useResp = true,
     useProt = false, useStrb = false)
-
 
   def decodeConfig = decodeParameters()  /* with Csr and IM instruction */
 

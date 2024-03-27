@@ -38,7 +38,6 @@ class Fetch extends PrefixComponent{
   }
   getInst.clearWhen(hold_en)
   getInst.setWhen(remain && !hold_en)
-
   io.fetchOutPipe.valid := getInst
   /* pass the pc and inst with the pipe going */
   val dff_pc = new Pipe_DFF(io.fetchInPipe.pc.getBitsWidth)

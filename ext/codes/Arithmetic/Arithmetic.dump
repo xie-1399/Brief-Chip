@@ -32,6 +32,14 @@ Disassembly of section .text:
 80000060:	000020b7          	lui	ra,0x2
 80000064:	00001097          	auipc	ra,0x1
 80000068:	00002097          	auipc	ra,0x2
+8000006c:	00000113          	li	sp,0
+80000070:	00300193          	li	gp,3
+80000074:	003100b3          	add	ra,sp,gp
+80000078:	003080b3          	add	ra,ra,gp
+8000007c:	00408093          	addi	ra,ra,4 # 8000206c <_end+0x106c>
+80000080:	00000013          	nop
+80000084:	00000013          	nop
+80000088:	00000013          	nop
 
 Disassembly of section .riscv.attributes:
 
