@@ -11,22 +11,9 @@ import SimTools.Tools._
 
 class KernelUsage extends AnyFunSuite {
   /* the trace is worked */
-  def PASS(PC:String,passSymbol:String) = {
-    if(PC == passSymbol) simSuccess()
-  }
-  def KernelInit(dut:Kernel,binary:String,address:Long = 0x80000000l) = {
-    dut.systemClockDomain.forkStimulus(10)
-    val mem = Axi4MemorySimV2(dut.io.axi4, dut.systemClockDomain, SimConfig.axi4simConfig)
-    println("the memory load finish!")
-    mem.memory.loadBinary(address, binary) // add the test file
-    mem.start()
-    Axi4Init(dut.io.axi4)
-    dut.io.jtagReset #= false
-    dut.systemClockDomain.waitSampling(5)
-  }
 
   test("Arithmetic") {
-    SIMCFG().compile {
+    SIMCFG(gtkFirst = true).compile {
       val dut = new Kernel()
       dut.core.regfile.regfile.simPublic()
       dut.core.regfile.io.simPublic()
@@ -51,7 +38,7 @@ class KernelUsage extends AnyFunSuite {
 
   test("lsu test"){
     /* write the memory and read the memory with mask on*/
-    SIMCFG().compile {
+    SIMCFG(gtkFirst = true).compile {
       val dut = new Kernel()
       dut.core.regfile.regfile.simPublic()
       dut.core.regfile.io.simPublic()
@@ -76,7 +63,7 @@ class KernelUsage extends AnyFunSuite {
   }
 
   test("jump test"){
-    SIMCFG().compile {
+    SIMCFG(gtkFirst = true).compile {
       val dut = new Kernel()
       dut.core.regfile.regfile.simPublic()
       dut.core.regfile.io.simPublic()
@@ -102,7 +89,7 @@ class KernelUsage extends AnyFunSuite {
 
   test("csr") {
     /* test about the interrupt and exception also ecall and ebreak */
-    SIMCFG().compile {
+    SIMCFG(gtkFirst = true).compile {
       val dut = new Kernel()
       dut.core.regfile.regfile.simPublic()
       dut.core.regfile.io.simPublic()
