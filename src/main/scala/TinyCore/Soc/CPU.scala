@@ -6,6 +6,7 @@ import spinal.core._
 import spinal.lib._
 import spinal.core.sim._
 import spinal.lib.bus.amba3.apb.Apb3Decoder
+import spinal.lib.misc.Apb3Clint
 import spinal.lib.com.uart._
 import spinal.lib.bus.amba4.axi._
 import TinyCore.Peripheral._
@@ -41,16 +42,16 @@ class CPU extends Component{
     val gpo = out Bits (gpioWidth bits)
     val uart = master (Uart())
   }
-
-    val AsyncResetClockDomain = ClockDomain(
+  noIoPrefix()
+  val AsyncResetClockDomain = ClockDomain(
       clock = io.clk,
       config = ClockDomainConfig(resetKind = BOOT,resetActiveLevel = LOW)
     )
-    val resetCtrl = new ClockingArea(AsyncResetClockDomain) {
+  val resetCtrl = new ClockingArea(AsyncResetClockDomain) {
       val AsyncReset = RegNext(io.reset) simPublic()
     }
 
-    val systemClockDomain = ClockDomain(
+  val systemClockDomain = ClockDomain(
       clock = io.clk,
       reset = resetCtrl.AsyncReset,
       frequency = FixedFrequency(100 MHz)
@@ -59,22 +60,21 @@ class CPU extends Component{
   val Soc = new ClockingArea(systemClockDomain){
     val kernel = new Kernel(true) /* for debug use */
     val apb3Gpio = new Apb3Gpio(addrWidth = peripheralAddr,gpioWidth = gpioWidth)
-    val apb3Clint = new Apb3Clint(addrWidth = peripheralAddr)
+    val apb3Clint = Apb3Clint(1)
     val apb3Ram = new Apb3Ram(addrWidth = peripheralAddr)
     val apb3Rom = new Apb3Rom(addrWidth = peripheralAddr)
     val apb3Uart = Apb3UartCtrl(uartCtrlConfig)
-    apb3Uart.io.apb.addAttribute(Verilator.public)
     apb3Uart.io.uart <> io.uart
     apb3Gpio.io.gpi := io.gpi
     io.gpo := apb3Gpio.io.gpo
     val apb3Decoder = Apb3Decoder(
       master = kernel.io.apb, /* the master apb addr width should > slave */
       slaves = List(
-        apb3Uart.io.apb -> (0x00000,32 KiB),
-        apb3Rom.io.apb -> (0x10000,32 KiB),
-        apb3Ram.io.apb -> (0x20000,32 KiB),
-        apb3Gpio.io.apb -> (0x30000,1 KiB),
-        apb3Clint.io.apb -> (0x40000,1 KiB)
+        apb3Uart.io.apb -> (0x10000000,32 KiB),
+        apb3Rom.io.apb -> (0x10010000,32 KiB),
+        apb3Ram.io.apb -> (0x10020000,32 KiB),
+        apb3Gpio.io.apb -> (0x10030000,1 KiB),
+        apb3Clint.io.bus -> (0x10040000,1 KiB)
       )
     )
     kernel.io.jtagReset := io.jtagReset

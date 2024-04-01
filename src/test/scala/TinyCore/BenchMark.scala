@@ -9,10 +9,19 @@ import TinyCore.Core._
 import SimTools.Tools._
 import TinyCore.Soc.CPU
 import org.scalatest.funsuite.AnyFunSuite
+import spinal.lib.bus.amba3.apb.Apb3
 
 /* run all the benchmarks here */
 
 class BenchMark extends AnyFunSuite{
+
+  def catchW(apb: Apb3, base: BigInt, offset: BigInt, log: Boolean = true) = {
+    val Cond = apb.PENABLE.toBoolean && apb.PREADY.toBoolean &&
+      apb.PWRITE.toBoolean && apb.PSEL.toBigInt == 1 && apb.PADDR.toBigInt >= base && base + offset >= apb.PADDR.toBigInt
+    if (Cond) {
+      if (log) print(apb.PWDATA.toBigInt.toChar) /* with char out */
+    }
+  }
 
   test("RV bench"){
     /* the rv test will be tested on the kernel */
@@ -40,6 +49,7 @@ class BenchMark extends AnyFunSuite{
           mem.start()
           Axi4Init(dut.io.axi4)
           dut.io.jtagReset #= false
+          dut.io.uart.rxd #= true
           dut.io.reset #= true
           dut.io.gpi #= 0
           dut.systemClockDomain.waitSampling()
@@ -67,13 +77,32 @@ class BenchMark extends AnyFunSuite{
     }
 
   test("internal ram or rom"){
-    
+
 
   }
 
 
   test("Dhrystone"){
-
+    SIMCFG(gtkFirst = true).compile {
+      val dut = new CPU()
+      val core = dut.Soc.kernel.core
+      core.regfile.regfile.simPublic()
+      core.regfile.io.simPublic()
+      dut.Soc.apb3Uart.io.apb.simPublic()
+      dut
+    }.doSimUntilVoid {
+      dut =>{
+        SimTimeout(10 us)
+        CPUInit(dut, "ext/C/Dhrystone/build/dhrystone.bin")
+        def passSymbol = "80000070"
+        def failSymbol = "80000078"
+        val lastStagePC = dut.Soc.kernel.core.whiteBox.lastStagePC
+        dut.systemClockDomain.onSamplings {
+          catchW(dut.Soc.apb3Uart.io.apb,0,0)
+          PASS(lastStagePC.toLong.toHexString, passSymbol,failSymbol)
+        }
+      }
+    }
   }
 
 
