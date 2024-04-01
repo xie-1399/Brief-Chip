@@ -76,17 +76,17 @@ object Tools {
   }
 
   def KernelInit(dut: Kernel, binary: String, address: Long = 0x80000000l) = {
-    dut.systemClockDomain.forkStimulus(10)
-    val mem = Axi4MemorySimV2(dut.io.axi4, dut.systemClockDomain, SimConfig.axi4simConfig)
+    dut.clockDomain.forkStimulus(10)
+    val mem = Axi4MemorySimV2(dut.io.axi4, dut.clockDomain, SimConfig.axi4simConfig)
     println("the memory load finish!")
     mem.memory.loadBinary(address, binary) // add the test file
     mem.start()
     Axi4Init(dut.io.axi4)
     dut.io.jtagReset #= false
-    dut.io.reset #= true
-    dut.systemClockDomain.waitSampling()
-    dut.io.reset #= false
-    dut.systemClockDomain.waitSampling(3)
+//    dut.io.reset #= true
+//    dut.systemClockDomain.waitSampling()
+//    dut.io.reset #= false
+//    dut.systemClockDomain.waitSampling(3)
   }
 
 }

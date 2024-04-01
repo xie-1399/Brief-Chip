@@ -18,7 +18,7 @@ import spinal.sim._
 import scala.collection.mutable
 import scala.util.Random
 
-case class Axi4MemorySimV2(axi : Axi4, clockDomain : ClockDomain, config : AxiMemorySimConfig){
+case class Axi4MemorySimV2(axi : Axi4, clockDomain : ClockDomain, config : AxiMemorySimConfig, Aligned:Boolean = false){
   val memory = SparseMemory()
   val pending_reads = new mutable.Queue[AxiJob]
   val pending_writes = new mutable.Queue[AxiJob]
@@ -219,7 +219,11 @@ case class Axi4MemorySimV2(axi : Axi4, clockDomain : ClockDomain, config : AxiMe
 
         for (i <- 0 to job.burstLength) {
           clockDomain.waitSamplingWhere(w.valid.toBoolean)
-          memory.writeBigInt(job.alignedBurstAddress(i, maxBurstSize), w.payload.data.toBigInt, busWordWidth, getStrb(w.payload))
+          if(Aligned){
+            memory.writeBigInt(job.alignedBurstAddress(i, maxBurstSize), w.payload.data.toBigInt, busWordWidth, getStrb(w.payload))
+          }else{
+            memory.writeBigInt(job.address, w.payload.data.toBigInt,busWordWidth, getStrb(w.payload))
+          }
         }
 
         w.ready #= false
@@ -282,7 +286,8 @@ case class Axi4MemorySimV2(axi : Axi4, clockDomain : ClockDomain, config : AxiMe
         }
         else {
           clockDomain.waitSamplingWhere(w.valid.toBoolean)
-          memory.writeBigInt(job.alignedBurstAddress(i, maxBurstSize), w.payload.data.toBigInt, busWordWidth, getStrb(w.payload))
+          if(Aligned){memory.writeBigInt(job.alignedBurstAddress(i, maxBurstSize), w.payload.data.toBigInt, busWordWidth, getStrb(w.payload))}
+          else{memory.writeBigInt(job.address, w.payload.data.toBigInt, busWordWidth, getStrb(w.payload))}
           i = i + 1
         }
       }

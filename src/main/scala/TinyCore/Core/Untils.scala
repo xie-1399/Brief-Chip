@@ -22,7 +22,6 @@ object Pipeline{
 object Evaluate{
 
   /* test if 100 MHZ can work */
-
   def evaluate(vivadoPath:String,rtlPath:String,name:String = "top"): Unit = {
     // val vivadoPath = "/mnt/eda1/Vivado/2021.2"
     val workSpace = "./report"

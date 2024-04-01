@@ -11,10 +11,9 @@ import SimTools.Tools._
 
 class KernelUsage extends AnyFunSuite {
   /* the trace is worked */
-
   test("Arithmetic") {
     SIMCFG(gtkFirst = true).compile {
-      val dut = new Kernel()
+      val dut = new Kernel(true)
       dut.core.regfile.regfile.simPublic()
       dut.core.regfile.io.simPublic()
       dut
@@ -26,7 +25,7 @@ class KernelUsage extends AnyFunSuite {
         def passSymbol = "80000088"
         val lastStagePC = dut.core.whiteBox.lastStagePC
         var index = 0
-        dut.systemClockDomain.onSamplings {
+        dut.clockDomain.onSamplings {
           if(dut.core.regfile.io.write.we.toBoolean && dut.core.regfile.io.write.waddr.toBigInt == 1){
             assert(traces(index) == dut.core.regfile.io.write.wdata.toBigInt.toString())
             index += 1
@@ -39,7 +38,7 @@ class KernelUsage extends AnyFunSuite {
   test("lsu test"){
     /* write the memory and read the memory with mask on*/
     SIMCFG(gtkFirst = true).compile {
-      val dut = new Kernel()
+      val dut = new Kernel(true)
       dut.core.regfile.regfile.simPublic()
       dut.core.regfile.io.simPublic()
       dut
@@ -51,7 +50,7 @@ class KernelUsage extends AnyFunSuite {
         val lastStagePC = dut.core.whiteBox.lastStagePC
         val traces = readFile("src/test/scala/TinyCore/Trace/Memory").toArray
         var index = 0
-        dut.systemClockDomain.onSamplings {
+        dut.clockDomain.onSamplings {
           dut.io.apb.PREADY #= true
           if (dut.core.regfile.io.write.we.toBoolean && dut.core.regfile.io.write.waddr.toBigInt == 4) {
             assert(traces(index) == dut.core.regfile.io.write.wdata.toBigInt.toString())
@@ -64,7 +63,7 @@ class KernelUsage extends AnyFunSuite {
 
   test("jump test"){
     SIMCFG(gtkFirst = true).compile {
-      val dut = new Kernel()
+      val dut = new Kernel(true)
       dut.core.regfile.regfile.simPublic()
       dut.core.regfile.io.simPublic()
       dut
@@ -76,7 +75,7 @@ class KernelUsage extends AnyFunSuite {
         val lastStagePC = dut.core.whiteBox.lastStagePC
         val traces = readFile("src/test/scala/TinyCore/Trace/Jump").toArray
         var index = 0
-        dut.systemClockDomain.onSamplings {
+        dut.clockDomain.onSamplings {
           dut.io.apb.PREADY #= true
           if (dut.core.regfile.io.write.we.toBoolean && dut.core.regfile.io.write.waddr.toBigInt == 4) {
             assert(traces(index) == dut.core.regfile.io.write.wdata.toBigInt.toString())
@@ -90,7 +89,7 @@ class KernelUsage extends AnyFunSuite {
   test("csr") {
     /* test about the interrupt and exception also ecall and ebreak */
     SIMCFG(gtkFirst = true).compile {
-      val dut = new Kernel()
+      val dut = new Kernel(true)
       dut.core.regfile.regfile.simPublic()
       dut.core.regfile.io.simPublic()
       dut
@@ -103,7 +102,7 @@ class KernelUsage extends AnyFunSuite {
         val lastStagePC = dut.core.whiteBox.lastStagePC
         val traces = readFile("src/test/scala/TinyCore/Trace/Csr").toArray
         var index = 0
-        dut.systemClockDomain.onSamplings {
+        dut.clockDomain.onSamplings {
           dut.io.apb.PREADY #= false
           if (dut.core.regfile.io.write.we.toBoolean && dut.core.regfile.io.write.waddr.toBigInt == 4) {
             assert(traces(index) == dut.core.regfile.io.write.wdata.toBigInt.toString())
@@ -117,18 +116,18 @@ class KernelUsage extends AnyFunSuite {
   /* compile the rv test bench first */
   test("RV bench example ") {
     SIMCFG(gtkFirst = true).compile {
-      val dut = new Kernel()
+      val dut = new Kernel(true)
       dut.core.regfile.regfile.simPublic()
       dut.core.regfile.io.simPublic()
       dut
     }.doSimUntilVoid {
       dut =>
         SimTimeout(100 ns)
-        KernelInit(dut, "ext/bench/rv32ui-p-sw.bin")
-        def passSymbol = "80000554"
+        KernelInit(dut, "ext/bench/rv32ui-p-sb.bin")
+        def passSymbol = "800004c4"
         /* pass symbol */
         val lastStagePC = dut.core.whiteBox.lastStagePC
-        dut.systemClockDomain.onSamplings {
+        dut.clockDomain.onSamplings {
           PASS(lastStagePC.toLong.toHexString, passSymbol)
         }
     }

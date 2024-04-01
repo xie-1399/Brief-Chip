@@ -23,7 +23,10 @@ class ALUPlugin extends PrefixComponent{
   /* the imm shift should be low 5 bits*/
   val shiftIMMRange = io.op2(11 downto 5)
   val shiftIMM = shiftIMMRange === 0 || shiftIMMRange === 32
-  val shiftOp = Mux(shiftIMM,io.op2(4 downto 0).asUInt,io.op2.asUInt)
+  val downOp2 = io.op2.msb /* if the op2 < 0 */
+  val useOp2 = Mux(downOp2,io.op2(4 downto 0).resized,io.op2)
+  val shiftOp = Mux(shiftIMM,io.op2(4 downto 0).asUInt,useOp2.asUInt)
+
 
   val bitsCal = io.alu.mux(
     AND -> (io.op1 & io.op2),
@@ -35,7 +38,6 @@ class ALUPlugin extends PrefixComponent{
     COPY -> io.op2, /* copy is for the operation 2 */
     default -> io.op1
   )
-
 
   val lessU = io.alu === SLTU
   val less = Mux(lessU,io.op1.asUInt < io.op2.asUInt,io.op1.asSInt < io.op2.asSInt)
@@ -52,4 +54,12 @@ class ALUPlugin extends PrefixComponent{
   }.otherwise{
     io.res := B(0,Xlen bits)
   }
+}
+
+
+object ALUPlugin extends App{
+  /* some logic about the SInt value */
+  SpinalVerilog(new ALUPlugin())
+
+
 }

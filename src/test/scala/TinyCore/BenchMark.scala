@@ -7,6 +7,7 @@ import spinal.core.sim._
 import spinal.core._
 import TinyCore.Core._
 import SimTools.Tools._
+import TinyCore.Soc.CPU
 import org.scalatest.funsuite.AnyFunSuite
 
 /* run all the benchmarks here */
@@ -16,9 +17,10 @@ class BenchMark extends AnyFunSuite{
   test("RV bench"){
     /* the rv test will be tested on the kernel */
     SIMCFG(gtkFirst = true).compile {
-      val dut = new Kernel()
-      dut.core.regfile.regfile.simPublic()
-      dut.core.regfile.io.simPublic()
+      val dut = new CPU()
+      val core = dut.Soc.kernel.core
+      core.regfile.regfile.simPublic()
+      core.regfile.io.simPublic()
       dut
     }.doSimUntilVoid {
       dut =>
@@ -39,13 +41,14 @@ class BenchMark extends AnyFunSuite{
           Axi4Init(dut.io.axi4)
           dut.io.jtagReset #= false
           dut.io.reset #= true
+          dut.io.gpi #= 0
           dut.systemClockDomain.waitSampling()
           dut.io.reset #= false
           dut.systemClockDomain.waitSampling(3)
           start = false
         }
         startIt()
-        val lastStagePC = dut.core.whiteBox.lastStagePC
+        val lastStagePC = dut.Soc.kernel.core.whiteBox.lastStagePC
         dut.systemClockDomain.onSamplings{
           dut.io.reset #= false
           if(lastStagePC.toLong.toHexString == passSymbols(passNum) && !start){
@@ -62,6 +65,11 @@ class BenchMark extends AnyFunSuite{
         }
       }
     }
+
+  test("internal ram or rom"){
+    
+
+  }
 
 
   test("Dhrystone"){

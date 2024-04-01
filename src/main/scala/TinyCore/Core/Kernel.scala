@@ -20,30 +20,14 @@ import spinal.lib.bus.amba4.axi._
  * =======================================================
  */
 
-class Kernel extends PrefixComponent{
+class Kernel(whitebox:Boolean = false) extends PrefixComponent{
   val io = new Bundle{
-    val clk = in Bool()
-    val reset = in Bool()
     val jtagReset = in Bool()
     val axi4 = master (Axi4(kernelAxi4Config))
-    val apb = master(Apb3(kernelApb3Config))
+    val apb = master (Apb3(kernelApb3Config))
   }
 
-  val AsyncResetClockDomain = ClockDomain(
-    clock = io.clk,
-    config = ClockDomainConfig(resetKind = BOOT,resetActiveLevel = LOW)
-  )
-  val resetCtrl = new ClockingArea(AsyncResetClockDomain) {
-    val AsyncReset = RegNext(io.reset) simPublic()
-  }
-
-  val systemClockDomain = ClockDomain(
-    clock = io.clk,
-    reset = resetCtrl.AsyncReset,
-    frequency = FixedFrequency(100 MHz)
-  )
-
-  val core = new ClockingArea(systemClockDomain){
+  val core = new Area {
     /* connect the fetch + decode + excute + regfile*/
     val regfile = new Regfile()
     val fetch = new FetchAxi4()
@@ -100,12 +84,14 @@ class Kernel extends PrefixComponent{
     axiCrossBar.build()
     excute.io.peripheralBus.toApb3() >> io.apb
 
-    val whiteBox = new Area {
-      /* for the debug use get the last stage pc */
-      val lastStagePC = Reg(UInt(Xlen bits)).init(0)
-      lastStagePC.simPublic()
-      when(excute.io.excuteInPipe.valid && excute.io.opcode.illegal) {
-        lastStagePC := excute.io.excuteInPipe.pc
+    val whiteBox = whitebox.generate{
+      new Area {
+        /* for the debug use get the last stage pc */
+        val lastStagePC = Reg(UInt(Xlen bits)).init(0)
+        lastStagePC.simPublic()
+        when(excute.io.excuteInPipe.valid && excute.io.opcode.illegal) {
+          lastStagePC := excute.io.excuteInPipe.pc
+        }
       }
     }
   }
