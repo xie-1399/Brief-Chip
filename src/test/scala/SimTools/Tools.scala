@@ -3,8 +3,12 @@ package SimTools
 import spinal.core._
 import spinal.core.sim._
 import spinal.lib.bus.amba4.axi._
-import scala.io.Source
 
+import scala.io.Source
+import TinyCore.Core._
+import TinyCore.Sim.Axi4MemorySimV2
+import TinyCore.SimConfig
+import TinyCore.Soc.CPU
 object Tools {
 
   def HexStringWithWidth(hex: String, width: Int, fill: String = "0", left: Boolean = true): String = {
@@ -67,6 +71,36 @@ object Tools {
     if (b.config.useId) b.id #= 0
     if (b.config.useResp) b.resp #= 0
     if (b.config.useBUser) b.user #= 0
+  }
+
+  def PASS(PC: String, passSymbol: String,failSymbol:String = "-1") = {
+    if (PC == passSymbol) simSuccess()
+    if (PC == failSymbol) simFailure()
+  }
+
+  def KernelInit(dut: Kernel, binary: String, address: Long = 0x80000000l) = {
+    dut.clockDomain.forkStimulus(10)
+    val mem = Axi4MemorySimV2(dut.io.axi4, dut.clockDomain, SimConfig.axi4simConfig)
+    println("the memory load finish!")
+    mem.memory.loadBinary(address, binary) // add the test file
+    mem.start()
+    Axi4Init(dut.io.axi4)
+    dut.io.jtagReset #= false
+  }
+
+  def CPUInit(dut: CPU, binary: String, address: Long = 0x80000000l) = {
+    dut.systemClockDomain.forkStimulus(10)
+    val mem = Axi4MemorySimV2(dut.io.axi4, dut.systemClockDomain, SimConfig.axi4simConfig)
+    println("the memory load finish!")
+    mem.memory.loadBinary(address, binary) // add the test file
+    mem.start()
+    Axi4Init(dut.io.axi4)
+    dut.io.uart.rxd #= true
+    dut.io.jtagReset #= false
+    dut.io.reset #= true
+    dut.systemClockDomain.waitSampling()
+    dut.io.reset #= false
+    dut.systemClockDomain.waitSampling(3)
   }
 
 }

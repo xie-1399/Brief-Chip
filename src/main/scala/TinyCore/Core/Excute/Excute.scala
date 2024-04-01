@@ -116,6 +116,7 @@ class Excute extends PrefixComponent{
     splitIt.io.memoryCmd <> memoryCmd
     val OnMemory = RegInit(False).setWhen(memoryOp).clearWhen(splitIt.io.dBus.read.rsp.fire || splitIt.io.dBus.write.rsp.fire || splitIt.io.peripheralBus.cmd.fire)
     val error = splitIt.io.dBus.read.rsp.error || splitIt.io.dBus.write.rsp.error || splitIt.io.peripheralBus.rsp.error
+    val ioTask = RegInit(False).setWhen(splitIt.io.peripheralBus.cmd.valid).clearWhen(splitIt.io.peripheralBus.rsp.fire)
 
     when(memoryOp || OnMemory){
       hold := Hold_Decode /* hold all unit */
@@ -189,15 +190,35 @@ class Excute extends PrefixComponent{
     /* think about it*/
     val memory = lsuWriteBack || lsu.memoryOp
     val Unsigned = lsu.extend === MemoryOp.LOAD_U
+    val Halfoffset = lsu.address(1 downto 0).asBits === B"10"
+    val HalfData = (Halfoffset ## lsu.ioTask).mux(
+      B"00" -> lsu.splitIt.io.dBus.read.rsp.data(15 downto 0).asBits,
+      B"01" -> lsu.splitIt.io.peripheralBus.rsp.data(15 downto 0).asBits,
+      B"10" -> lsu.splitIt.io.dBus.read.rsp.data(31 downto 16).asBits,
+      B"11" -> lsu.splitIt.io.peripheralBus.rsp.data(31 downto 16).asBits
+    )
+    val ByteData = (lsu.address(1 downto 0).asBits ## lsu.ioTask).mux(
+      B"000" -> lsu.splitIt.io.dBus.read.rsp.data(7 downto 0).asBits,
+      B"010" -> lsu.splitIt.io.dBus.read.rsp.data(15 downto 8).asBits,
+      B"100" -> lsu.splitIt.io.dBus.read.rsp.data(23 downto 16).asBits,
+      B"110" -> lsu.splitIt.io.dBus.read.rsp.data(31 downto 24).asBits,
+
+      B"001" -> lsu.splitIt.io.peripheralBus.rsp.data(7 downto 0).asBits,
+      B"011" -> lsu.splitIt.io.peripheralBus.rsp.data(15 downto 8).asBits,
+      B"101" -> lsu.splitIt.io.peripheralBus.rsp.data(23 downto 16).asBits,
+      B"111" -> lsu.splitIt.io.peripheralBus.rsp.data(31 downto 24).asBits
+    )
+
+    /* bytes value and half value should be set*/
     val dbusRsp = lsu.mask.mux(
       Mask.WORD -> lsu.splitIt.io.dBus.read.rsp.data,
-      Mask.HALF -> Mux(Unsigned,lsu.splitIt.io.dBus.read.rsp.data(15 downto 0).resize(Xlen),Repeat(lsu.splitIt.io.dBus.read.rsp.data.msb,16) ## lsu.splitIt.io.dBus.read.rsp.data(15 downto 0)),
-      Mask.BYTE -> Mux(Unsigned,lsu.splitIt.io.dBus.read.rsp.data(7 downto 0).resize(Xlen),Repeat(lsu.splitIt.io.dBus.read.rsp.data.msb,24) ## lsu.splitIt.io.dBus.read.rsp.data(7 downto 0))
+      Mask.HALF -> Mux(Unsigned,HalfData.resize(Xlen),Repeat(HalfData.msb,16) ## HalfData),
+      Mask.BYTE -> Mux(Unsigned,ByteData.resize(Xlen),Repeat(ByteData.msb,24) ## ByteData)
     )
     val peripheralRsp = lsu.mask.mux(
       Mask.WORD -> lsu.splitIt.io.peripheralBus.rsp.data,
-      Mask.HALF -> Mux(Unsigned,lsu.splitIt.io.peripheralBus.rsp.data(15 downto 0).resize(Xlen),Repeat(lsu.splitIt.io.peripheralBus.rsp.data.msb,16) ## lsu.splitIt.io.peripheralBus.rsp.data(15 downto 0)),
-      Mask.BYTE -> Mux(Unsigned,lsu.splitIt.io.peripheralBus.rsp.data(7 downto 0).resize(Xlen),Repeat(lsu.splitIt.io.peripheralBus.rsp.data.msb,24) ## lsu.splitIt.io.peripheralBus.rsp.data(7 downto 0))
+      Mask.HALF -> Mux(Unsigned,HalfData.resize(Xlen),Repeat(HalfData.msb,16) ## HalfData),
+      Mask.BYTE -> Mux(Unsigned,ByteData.resize(Xlen),Repeat(ByteData.msb,24) ## ByteData)
     )
     val rsp = Mux(lsu.splitIt.io.dBus.read.rsp.fire,dbusRsp,peripheralRsp)
     val arithValue = Mux(ismuldiv,muldiv.muldivPlugin.io.res,alu.aluPlugin.io.res)
@@ -209,7 +230,7 @@ class Excute extends PrefixComponent{
     io.rfwrite.wdata := Mux(memory,rsp,jumpValue)
   }
 
-  io.error := lsu.error || muldiv.muldivPlugin.io.error
+  io.error := lsu.error
 }
 
 object Excute extends App{
