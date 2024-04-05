@@ -15,9 +15,9 @@ import spinal.lib.bus.amba3.apb.Apb3
 
 class BenchMark extends AnyFunSuite{
 
-  def catchW(apb: Apb3, base: BigInt, offset: BigInt, log: Boolean = true) = {
+  def catchW(apb: Apb3, base:BigInt, log: Boolean = true) = {
     val Cond = apb.PENABLE.toBoolean && apb.PREADY.toBoolean &&
-      apb.PWRITE.toBoolean && apb.PSEL.toBigInt == 1 && apb.PADDR.toBigInt >= base && base + offset >= apb.PADDR.toBigInt
+      apb.PWRITE.toBoolean && apb.PSEL.toBigInt == 1 & apb.PADDR.toBigInt == base
     if (Cond) {
       if (log) print(apb.PWDATA.toBigInt.toChar) /* with char out */
     }
@@ -76,13 +76,8 @@ class BenchMark extends AnyFunSuite{
       }
     }
 
-  test("internal ram or rom"){
-
-
-  }
-
-
-  test("Dhrystone"){
+  test("C Ram goes check") {
+    /* test the inter ram */
     SIMCFG(gtkFirst = true).compile {
       val dut = new CPU()
       val core = dut.Soc.kernel.core
@@ -91,14 +86,31 @@ class BenchMark extends AnyFunSuite{
       dut.Soc.apb3Uart.io.apb.simPublic()
       dut
     }.doSimUntilVoid {
-      dut =>{
+      dut => {
         SimTimeout(10 us)
+        CPUInit(dut, "ext/C/Dhrystone/build/dhrystone.bin")
+      }
+    }
+  }
+
+
+  test("Dhrystone"){
+    SIMCFG(gtkFirst = true,compress = true).compile {
+      val dut = new CPU()
+      val core = dut.Soc.kernel.core
+      core.regfile.regfile.simPublic()
+      core.regfile.io.simPublic()
+      dut.Soc.apb3Uart.io.apb.simPublic()
+      dut
+    }.doSimUntilVoid {
+      dut =>{
+        SimTimeout(200 us)
         CPUInit(dut, "ext/C/Dhrystone/build/dhrystone.bin")
         def passSymbol = "80000070"
         def failSymbol = "80000078"
         val lastStagePC = dut.Soc.kernel.core.whiteBox.lastStagePC
         dut.systemClockDomain.onSamplings {
-          catchW(dut.Soc.apb3Uart.io.apb,0,0)
+          catchW(dut.Soc.apb3Uart.io.apb,0)
           PASS(lastStagePC.toLong.toHexString, passSymbol,failSymbol)
         }
       }

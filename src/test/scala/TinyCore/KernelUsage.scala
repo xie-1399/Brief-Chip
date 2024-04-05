@@ -7,6 +7,7 @@ import spinal.core.sim._
 import spinal.core._
 import TinyCore.Core._
 import SimTools.Tools._
+import TinyCore.Soc.CPU
 
 
 class KernelUsage extends AnyFunSuite {
@@ -89,23 +90,25 @@ class KernelUsage extends AnyFunSuite {
   test("csr") {
     /* test about the interrupt and exception also ecall and ebreak */
     SIMCFG(gtkFirst = true).compile {
-      val dut = new Kernel(true)
-      dut.core.regfile.regfile.simPublic()
-      dut.core.regfile.io.simPublic()
+      val dut = new CPU()
+      val core = dut.Soc.kernel.core
+      core.regfile.regfile.simPublic()
+      core.regfile.io.simPublic()
       dut
     }.doSimUntilVoid {
       dut =>
-        SimTimeout(10 ns)
+        SimTimeout(100 ns)
         /* Todo test about the exception later */
-        KernelInit(dut, "ext/codes/Csr/Csr.bin")
-        def passSymbol = "80000034"
-        val lastStagePC = dut.core.whiteBox.lastStagePC
+        CPUInit(dut, "ext/codes/Csr/Csr.bin")
+
+        def passSymbol = "80000070"
+
+        val lastStagePC = dut.Soc.kernel.core.whiteBox.lastStagePC
         val traces = readFile("src/test/scala/TinyCore/Trace/Csr").toArray
         var index = 0
         dut.clockDomain.onSamplings {
-          dut.io.apb.PREADY #= false
-          if (dut.core.regfile.io.write.we.toBoolean && dut.core.regfile.io.write.waddr.toBigInt == 4) {
-            assert(traces(index) == dut.core.regfile.io.write.wdata.toBigInt.toString())
+          if (dut.Soc.kernel.core.regfile.io.write.we.toBoolean && dut.Soc.kernel.core.regfile.io.write.waddr.toBigInt == 4) {
+            assert(traces(index) == dut.Soc.kernel.core.regfile.io.write.wdata.toBigInt.toString())
             index += 1
           }
           PASS(lastStagePC.toLong.toHexString, passSymbol)

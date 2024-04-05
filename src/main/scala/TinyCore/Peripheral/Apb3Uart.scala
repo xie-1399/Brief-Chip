@@ -13,7 +13,6 @@ import spinal.lib.bus.amba3.apb._
  */
 
 class Apb3Uart(addrWidth:Int = 32,dataWidth:Int = 32) extends Component {
-
   val io = new Bundle{
     val bus = slave(Apb3(addrWidth,dataWidth))
     val tx = out Bool()
@@ -21,6 +20,21 @@ class Apb3Uart(addrWidth:Int = 32,dataWidth:Int = 32) extends Component {
   }
 
 
+
+  val UartReg = new Area{
+
+
+
+  }
+
+
+  val TX = new Area{
+
+  }
+
+  val RX = new Area{
+
+  }
 
 
 }
